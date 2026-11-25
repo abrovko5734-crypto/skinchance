@@ -16,6 +16,7 @@ import { UpgradeHistory, type HistoryRow } from './components/UpgradeHistory'
 import { Clover } from './components/ui'
 import { fetchMe, type AuthState, type User } from './lib/auth'
 import { LoginScreen } from './components/LoginScreen'
+import { AdminPanel, ProfilePanel } from './components/AccountPanels'
 
 interface Inv { uid: string; itemId: string }
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -52,6 +53,10 @@ function Game({ user, balance }: { user: User; balance: number }) {
   const [chain, setChain] = useState<{ i: number; stake: number; target: number; odds: Odds } | null>(null)
   const [fx, setFx] = useState<{ source: Item; first: Item; final: Item; quick: boolean; done: () => void } | null>(null)
   const [picker, setPicker] = useState<null | 'source' | 'target'>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const adminIds = (import.meta.env.VITE_ADMIN_STEAM_IDS || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+  const isAdmin = adminIds.includes(user.id)
   const [toasts, setToasts] = useState<{ id: number; m: string }[]>([])
   const wheel = useRef<WheelHandle>(null)
 
@@ -115,7 +120,7 @@ function Game({ user, balance }: { user: User; balance: number }) {
   return (
     <div className="app">
       <Navbar balance={balance} user={user} onTopUp={() => toast('Пополнение баланса пока не подключено')} sound={soundOn}
-        onSound={() => { sound.setEnabled(!soundOn); setSoundOn(!soundOn); sound.play('select') }} onToast={toast} />
+        onSound={() => { sound.setEnabled(!soundOn); setSoundOn(!soundOn); sound.play('select') }} onToast={toast} onProfile={() => setProfileOpen(true)} onAdmin={() => setAdminOpen(true)} isAdmin={isAdmin} />
       <main>
         <div className="head">
           <div><h1>Апгрейдер</h1><p>Улучшайте предмет до более дорогого. Шанс считается по цене, сектор Clover — всегда {odds.cloverChance || 5}%.</p></div>
@@ -144,6 +149,8 @@ function Game({ user, balance }: { user: User; balance: number }) {
       {picker && <SkinSelectorModal mode={picker === 'source' ? 'inventory' : 'catalog'} fetcher={picker === 'source' ? pickSource : pickTarget}
         selected={picker === 'source' ? srcUid ?? undefined : tgtId ?? undefined} onClose={() => setPicker(null)}
         onPick={e => { sound.play('select'); if (picker === 'source') setSrcUid(e.uid!); else { remember([e.item]); setTgtId(e.item.id) } setLanded(null); setPicker(null) }} />}
+      {profileOpen && <ProfilePanel user={user} balance={balance} inventory={inv.map(e => cache[e.itemId]).filter(Boolean)} history={history} onClose={() => setProfileOpen(false)} onLogout={() => { location.href = '/api/auth?a=logout' }} />}
+      {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} onToast={toast} />}
       {fx && <CloverX2Animation source={fx.source} first={fx.first} final={fx.final} quick={fx.quick} onDone={fx.done} />}
       {phase === 'result' && res && <UpgradeResultModal res={res} onClose={() => { setPhase('idle'); setLanded(null) }} onRepeat={repeat} onNew={() => { setPhase('idle'); setLanded(null); setPicker('source') }} />}
       <div className="toasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="toast">{t.m}</div>)}</div>

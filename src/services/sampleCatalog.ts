@@ -37,9 +37,22 @@ const ROWS: Row[] = [
 ]
 export const sampleProvider: CatalogProvider = {
   async load() {
+    // Attach real CS2 item renders to the local demo catalog using the free public CSGO-API dataset.
+    // If the endpoint is unavailable, the local demo catalog still works and displays placeholders.
+    let imageMap = new Map<string, string>()
+    try {
+      const response = await fetch('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins_not_grouped.json', { signal: AbortSignal.timeout(7000) })
+      if (response.ok) {
+        const raw: any[] = await response.json()
+        for (const entry of raw) {
+          const weapon = entry.weapon?.name ?? '', pattern = entry.pattern?.name ?? ''
+          if (weapon && pattern && entry.image) imageMap.set(`${weapon.toLowerCase()}|${pattern.toLowerCase()}`, entry.image)
+        }
+      }
+    } catch { /* use image placeholders if the public catalog cannot be reached */ }
     return ROWS.map(([weapon, skin, w, rarity, category, collection, price, st = false]): Item => ({
       id: makeId(weapon, skin, w, st), weapon, skin, category, rarity, wear: W[w], stattrak: st, souvenir: false, collection,
-      name: makeName(weapon, skin, W[w], st, category === 'knife'), image: null, price, priceSource: 'demo',
+      name: makeName(weapon, skin, W[w], st, category === 'knife'), image: imageMap.get(`${weapon.toLowerCase()}|${skin.toLowerCase()}`) ?? null, price, priceSource: 'demo',
     }))
   },
 }
