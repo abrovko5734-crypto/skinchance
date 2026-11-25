@@ -67,3 +67,7 @@ Data catalogue API: SeekSkins public read-only API, described at https://seekski
 - Display conversion for demo catalog: 1 USD catalogue value = 100 DP; 100 DP = 50 UAH as the user-defined display rate. This is not a payment or cash-value promise.
 
 **Important:** upgrade RNG is still client-side demo logic and is not secure for real-money or redeemable value. Do not enable payments/withdrawals until a server-authoritative upgrade endpoint and ledger are implemented.
+
+
+## DP Coin asset
+The minimal gold clover DP coin is included at `public/dp-coin.png`. Use it in the UI via `/dp-coin.png`.
