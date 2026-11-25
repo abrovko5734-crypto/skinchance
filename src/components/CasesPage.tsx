@@ -24,18 +24,18 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
   const doOpen = async (c: GameCase) => {
     if (opening) return
     if (c.price > balance) {
-      onToast('Недостаточно DP')
+      onToast('Недостаточно DP. Пополнение: @Keldisqq')
       return
     }
     setOpening(true)
     sound.play('tick')
     onBalance(balance - c.price)
-    await new Promise((r) => setTimeout(r, 900))
+    await new Promise((r) => setTimeout(r, 1100))
     const drop = openCase(c)
     const item = await catalog.byId(drop.itemId)
     setResult({ drop, item })
     if (item) onAddItem(item.id)
-    sound.play(drop.price > c.price * 3 ? 'win' : 'select')
+    sound.play(drop.price > c.price * 2.5 ? 'win' : 'select')
     setOpening(false)
   }
 
@@ -45,11 +45,7 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
         <h2>Кейсы</h2>
         <div className="cases-filters">
           {(['all', 'common', 'rare', 'epic', 'legendary', 'mythic'] as const).map((f) => (
-            <button
-              key={f}
-              className={filter === f ? 'active' : ''}
-              onClick={() => setFilter(f)}
-            >
+            <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
               {f === 'all' ? 'Все' : RARITY_LABEL[f]}
             </button>
           ))}
@@ -67,13 +63,21 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
               sound.play('select')
             }}
           >
-            <div className="case-visual" style={{ background: `linear-gradient(135deg, hsl(${c.imageHue} 60% 18%), hsl(${c.imageHue} 40% 8%))` }}>
-              <span className="case-emoji">{c.imageEmoji}</span>
+            <div
+              className="case-visual"
+              style={{
+                background: `linear-gradient(145deg, hsl(${c.hue} 35% 16%) 0%, hsl(${c.hue} 45% 8%) 50%, #0a0b0a 100%)`,
+              }}
+            >
+              <div className="case-box">
+                <div className="case-lid" style={{ borderColor: `hsl(${c.hue} 60% 45%)` }} />
+                <div className="case-body" style={{ boxShadow: `inset 0 0 30px hsl(${c.hue} 40% 20% / 0.5)` }} />
+              </div>
               {c.tag && <span className="case-tag">{c.tag}</span>}
             </div>
             <div className="case-info">
               <strong>{c.name}</strong>
-              <span className="case-price">{c.price === 0 ? 'Бесплатно' : money(c.price)}</span>
+              <span className="case-price">{money(c.price)}</span>
             </div>
           </button>
         ))}
@@ -89,9 +93,17 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
               </button>
             </header>
             <div className="case-open-body">
-              <div className="case-preview" style={{ background: `linear-gradient(145deg, hsl(${selected.imageHue} 55% 22%), hsl(${selected.imageHue} 40% 10%))` }}>
-                <span className="case-emoji big">{selected.imageEmoji}</span>
-                <div className="case-price-big">{selected.price === 0 ? 'FREE' : money(selected.price)}</div>
+              <div
+                className="case-preview"
+                style={{
+                  background: `linear-gradient(160deg, hsl(${selected.hue} 40% 18%), hsl(${selected.hue} 30% 8%))`,
+                }}
+              >
+                <div className="case-box big">
+                  <div className="case-lid" style={{ borderColor: `hsl(${selected.hue} 55% 50%)` }} />
+                  <div className="case-body" />
+                </div>
+                <div className="case-price-big">{money(selected.price)}</div>
               </div>
               <div className="case-drops">
                 <h4>Возможные дропы</h4>
@@ -102,7 +114,7 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
                     .map((d) => (
                       <div key={d.itemId} className="drop-row">
                         <span className="drop-chance">{d.chance}%</span>
-                        <span className="drop-id">{d.itemId.replace(/-/g, ' ')}</span>
+                        <span className="drop-id">{d.itemId.replace(/\|/g, ' | ').replace(/-/g, ' ')}</span>
                         <span className="drop-price">{moneyShort(d.price)} DP</span>
                       </div>
                     ))}
@@ -111,15 +123,15 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
               <div className="case-actions">
                 <button
                   className="btn go"
-                  disabled={opening || (selected.price > 0 && selected.price > balance)}
+                  disabled={opening || selected.price > balance}
                   onClick={() => doOpen(selected)}
                 >
-                  {opening ? 'Открытие…' : selected.price === 0 ? 'Открыть бесплатно' : `Открыть за ${money(selected.price)}`}
+                  {opening ? 'Открытие…' : `Открыть за ${money(selected.price)}`}
                 </button>
               </div>
               {result && (
                 <div className={`case-result ${result.drop.price > selected.price * 2 ? 'big' : ''}`}>
-                  <div className="result-label">Выпало!</div>
+                  <div className="result-label">Выпало</div>
                   {result.item ? (
                     <>
                       <ItemImage item={result.item} size="lg" />
@@ -129,7 +141,13 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
                   ) : (
                     <strong>{result.drop.itemId}</strong>
                   )}
-                  <button className="btn" onClick={() => { setResult(null); setSelected(null) }}>
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      setResult(null)
+                      setSelected(null)
+                    }}
+                  >
                     В инвентарь
                   </button>
                 </div>

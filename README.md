@@ -1,29 +1,25 @@
-# SkinChance — CS2 Cases, Upgrader & Contracts
+# SkinChance — CS2 Cases & Upgrader
 
-Локальная годнота в стиле CaseSer: кейсы, апгрейдер с Clover, контракты, отдельный инвентарь, валюта **DP** (Donate Points).
+Production-ready frontend for CS2 cases, upgrader, contracts.
 
-## Запуск
+## Features
+- **20 cases** with CSS case art (no emoji)
+- **Upgrader**: min chance **0.01%**, house edge 8%
+- **Clover**: 30% chance to appear on the wheel, sector **5%**; disabled if win chance &lt; 5%
+- Quick presets: **75% / 50% / 30% / 5× / 10×**
+- **Contracts**, inventory, profile
+- **Top-up only via Telegram @Keldisqq** (no free DP)
+- **Admin** only if Steam ID is in `VITE_ADMIN_STEAM_IDS`
+- Steam OpenID login + Redis balance (Vercel)
+
+## Env (Vercel)
+- `VITE_ADMIN_STEAM_IDS` — comma-separated SteamIDs
+- `SESSION_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+- Optional: `VITE_CATALOG_URL`, `VITE_PRICES_URL`
+
+## Run
 ```bash
 npm install
 npm run dev
+# production API: vercel dev
 ```
-
-## Что есть
-- **20 кейсов** с разными редкостями и дропами
-- **Апгрейдер** с колесом: Clover 20% → при попадании цепочка с ~50% и падающим шансом
-- **Контракты** (10 предметов одной редкости → 1 следующей)
-- **Отдельный инвентарь** (не Steam), продажа, баланс в DP
-- **Админ-панель** (локальная выдача DP и предметов)
-- Гостевой режим без Steam / сервера
-
-## Clover
-- На первом колесе сектор Clover = **20%**
-- Попадание удваивает цель и запускает следующее колесо
-- На цепочке шанс win стартует с **50%** и постепенно падает (40 → 30 → 22 …), чтобы не было бесконечных x20
-- Fail в цепочке = потеря всего
-
-## Валюта
-Везде **DP** (Donate Points), не доллары.
-
-## Каталог
-Без `VITE_CATALOG_URL` используется расширенный sample-каталог с ценами в DP.

@@ -2,15 +2,17 @@ import { useState } from 'react'
 import { money } from '../lib/storage'
 import { Icon } from './ui'
 import type { User } from '../lib/auth'
+import { isAdminUser } from '../lib/auth'
 
-export type Tab = 'cases' | 'upgrade' | 'contracts' | 'inventory' | 'admin'
+export type Tab = 'cases' | 'upgrade' | 'contracts' | 'inventory' | 'profile' | 'admin'
 
-const NAV: { id: Tab; label: string }[] = [
+const NAV: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: 'cases', label: 'Кейсы' },
   { id: 'upgrade', label: 'Апгрейдер' },
   { id: 'contracts', label: 'Контракты' },
   { id: 'inventory', label: 'Инвентарь' },
-  { id: 'admin', label: 'Админ' },
+  { id: 'profile', label: 'Профиль' },
+  { id: 'admin', label: 'Админ', adminOnly: true },
 ]
 
 export function Navbar({
@@ -31,13 +33,23 @@ export function Navbar({
   onTab: (t: Tab) => void
 }) {
   const [menu, setMenu] = useState(false)
+  const admin = isAdminUser(user)
+
   return (
     <header className="nav">
-      <a className="logo" href="/" aria-label="SkinChance" onClick={(e) => { e.preventDefault(); onTab('cases') }}>
+      <a
+        className="logo"
+        href="/"
+        aria-label="SkinChance"
+        onClick={(e) => {
+          e.preventDefault()
+          onTab('cases')
+        }}
+      >
         <img src="/logo.png" alt="SkinChance" />
       </a>
       <nav aria-label="Разделы">
-        {NAV.map((n) => (
+        {NAV.filter((n) => !n.adminOnly || admin).map((n) => (
           <button
             key={n.id}
             className={tab === n.id ? 'active' : 'nav-off'}
@@ -49,13 +61,13 @@ export function Navbar({
         ))}
       </nav>
       <div className="nav-right">
-        <button className="icon-btn" onClick={onSound} aria-pressed={sound} aria-label="Звук" title={sound ? 'Звук включён' : 'Звук выключен'}>
+        <button className="icon-btn" onClick={onSound} aria-pressed={sound} aria-label="Звук">
           <Icon n={sound ? 'vol' : 'mute'} />
         </button>
-        <div className="balance" title="Ваш баланс">
+        <div className="balance" title="Баланс DP">
           <img src="/dp.png" alt="" className="dp-icon" width={18} height={18} />
           <span>{money(balance)}</span>
-          <button onClick={onTopUp} aria-label="Пополнить">
+          <button onClick={onTopUp} aria-label="Пополнить" title="Пополнить">
             <Icon n="plus" s={14} />
           </button>
         </div>
@@ -67,10 +79,11 @@ export function Navbar({
             <div className="menu" onMouseLeave={() => setMenu(false)}>
               <div className="menu-user">
                 {user.name}
-                <small>ID {user.id}</small>
+                <small>Steam {user.id}</small>
               </div>
-              <button onClick={() => onTab('inventory')}>Инвентарь</button>
-              <button onClick={() => onTab('admin')}>Админ</button>
+              <button onClick={() => { onTab('profile'); setMenu(false) }}>Профиль</button>
+              <button onClick={() => { onTab('inventory'); setMenu(false) }}>Инвентарь</button>
+              {admin && <button onClick={() => { onTab('admin'); setMenu(false) }}>Админ</button>}
               <button onClick={() => { location.href = '/api/auth?a=logout' }}>Выйти</button>
             </div>
           )}

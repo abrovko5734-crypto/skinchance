@@ -10,12 +10,9 @@ export function load<T>(key: string, fallback: T): T {
 export function save(key: string, v: unknown) {
   try {
     localStorage.setItem('sc.' + key, JSON.stringify(v))
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }
 
-/** Форматирование в Donate Points (DP) */
 export const money = (n: number) => {
   if (n == null || isNaN(n)) return '0 DP'
   const abs = Math.abs(n)

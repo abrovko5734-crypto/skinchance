@@ -9,29 +9,30 @@ export type AuthState =
   | { status: 'out'; error?: string }
   | { status: 'in'; user: User; balance: number }
 
-const GUEST: User = {
-  id: 'guest-local',
-  name: 'Игрок',
-  avatar: '',
+/** Steam IDs from VITE_ADMIN_STEAM_IDS (comma-separated) */
+export function getAdminIds(): string[] {
+  const raw = (import.meta.env.VITE_ADMIN_STEAM_IDS as string) || ''
+  return raw
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
-/** Локальный гостевой режим — работает без сервера. */
+export function isAdminUser(user: User | null | undefined): boolean {
+  if (!user) return false
+  const ids = getAdminIds()
+  if (ids.length === 0) return false
+  return ids.includes(String(user.id))
+}
+
 export async function fetchMe(): Promise<AuthState> {
   try {
     const r = await fetch('/api/auth?a=me', { credentials: 'same-origin' })
-    if (r.status === 401) {
-      // fallback to guest
-      return { status: 'in', user: GUEST, balance: 0 }
-    }
+    if (r.status === 401) return { status: 'out' }
     const j = await r.json().catch(() => ({}))
-    if (!r.ok) return { status: 'in', user: GUEST, balance: 0 }
+    if (!r.ok) return { status: 'out', error: j.message || 'Сервер недоступен' }
     return { status: 'in', user: j.user, balance: j.balance ?? 0 }
   } catch {
-    // Offline / no backend → guest with local balance
-    return { status: 'in', user: GUEST, balance: 0 }
+    return { status: 'out', error: 'Нужен вход через Steam. Локально: vercel dev' }
   }
-}
-
-export function isGuest(u: User) {
-  return u.id === 'guest-local'
 }
