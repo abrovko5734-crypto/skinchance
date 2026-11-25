@@ -11,7 +11,7 @@ function arc(a0: number, a1: number) {
   const [x0, y0] = pt(RO, a0), [x1, y1] = pt(RO, a1), [x2, y2] = pt(RI, a1), [x3, y3] = pt(RI, a0), l = a1 - a0 > 180 ? 1 : 0
   return `M${x0} ${y0}A${RO} ${RO} 0 ${l} 1 ${x1} ${y1}L${x2} ${y2}A${RI} ${RI} 0 ${l} 0 ${x3} ${y3}Z`
 }
-export interface WheelHandle { spin(roll: number): Promise<void> }
+export interface WheelHandle { spin(roll: number): Promise<void>; reset(): void }
 interface Props { odds: Odds; landed: Outcome | null; spinning: boolean }
 const reduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -29,6 +29,7 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
   }, [odds.winChance, odds.valid]) // eslint-disable-line
 
   useImperativeHandle(ref, () => ({
+    reset() { if (rot.current) { rot.current.style.transition = 'none'; rot.current.style.transform = 'rotate(0deg)'; angle.current = 0 } },
     spin(roll: number) {
       return new Promise<void>(res => {
         const o = oddsRef.current, el = rot.current!, rg = sectorRanges(o)

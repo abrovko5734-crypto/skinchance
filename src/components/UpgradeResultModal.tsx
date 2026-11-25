@@ -14,11 +14,11 @@ export function UpgradeResultModal({ res, onClose, onRepeat, onNew }: Props) {
           <ItemImage item={final} size="lg" />
           <h3>{final.name}</h3>
           <strong className="r-price">{money(final.price ?? 0)}</strong>
-          {clover && <p className="r-note">Базовый результат {money(target.price ?? 0)} → удвоенное улучшение до {money(res.odds.cloverCeiling)}. Итог: {money(final.price ?? 0)}.</p>}
+          {clover && <p className="r-note">Цепочка Clover: {res.steps.map(s => `${money(s.stake)}→${money(s.target)}`).join(' · ')}. Итог: {money(final.price ?? 0)}.</p>}
           <p className="r-meta">Предмет добавлен в инвентарь · {source.name} списан</p>
         </>) : (<>
           <p className="r-fail-t">Цель не получена</p>
-          <p className="r-meta">{source.name} ({money(source.price ?? 0)}) списан. Выпало {res.roll.toFixed(2)} — вне зоны успеха ({res.odds.totalWin}%).</p>
+          <p className="r-meta">{source.name} ({money(source.price ?? 0)}) списан.{res.steps.length > 1 ? ` Цепочка Clover оборвалась на колесе ${res.steps.length}: ${money(res.steps[res.steps.length - 1].stake)}→${money(res.steps[res.steps.length - 1].target)}.` : ` Выпало ${res.roll.toFixed(2)} — вне зоны успеха (${res.odds.totalWin}%).`}</p>
         </>)}
         <div className="btn-row wide">
           {fail ? <button className="btn primary" onClick={onRepeat}>Повторить</button> : <button className="btn primary" onClick={onClose}>Продолжить</button>}

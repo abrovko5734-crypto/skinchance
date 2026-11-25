@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { calcOdds, type Outcome } from './lib/odds'
+import { calcOdds, type Odds, type Outcome } from './lib/odds'
 import { sound } from './lib/sound'
 import { load, money, save } from './lib/storage'
 import { catalog, isDemoCatalog } from './services/itemCatalog'
@@ -14,6 +14,8 @@ import { CloverX2Animation } from './components/CloverX2Animation'
 import { UpgradeResultModal } from './components/UpgradeResultModal'
 import { UpgradeHistory, type HistoryRow } from './components/UpgradeHistory'
 import { Clover } from './components/ui'
+import { fetchMe, type AuthState, type User } from './lib/auth'
+import { LoginScreen } from './components/LoginScreen'
 
 interface Inv { uid: string; itemId: string }
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -29,16 +31,26 @@ const SEED: HistoryRow[] = [
 type Phase = 'idle' | 'spinning' | 'clover' | 'result'
 
 export default function App() {
-  const [inv, setInv] = useState<Inv[]>(() => load('inv', DEMO_INV))
-  const [srcUid, setSrcUid] = useState<string | null>(() => load('src', null))
-  const [tgtId, setTgtId] = useState<string | null>(() => load('tgt', null))
+  const [auth, setAuth] = useState<AuthState>({ status: 'loading' })
+  useEffect(() => { fetchMe().then(a => setAuth(a.status === 'out' && !a.error && new URLSearchParams(location.search).get('auth_error') ? { status: 'out', error: 'Не удалось войти через Steam, попробуйте ещё раз' } : a)) }, [])
+  if (auth.status === 'loading') return <div className="app boot"><Clover size={56} className="spin" /></div>
+  if (auth.status === 'out') return <LoginScreen error={auth.error} />
+  return <Game key={auth.user.id} user={auth.user} balance={auth.balance} />
+}
+
+function Game({ user, balance }: { user: User; balance: number }) {
+  const k = (n: string) => `${user.id}.${n}`
+  const [inv, setInv] = useState<Inv[]>(() => load(k('inv'), DEMO_INV))
+  const [srcUid, setSrcUid] = useState<string | null>(() => load(k('src'), null))
+  const [tgtId, setTgtId] = useState<string | null>(() => load(k('tgt'), null))
   const [cache, setCache] = useState<Record<string, Item>>({})
-  const [balance, setBalance] = useState(() => load('bal', 100))
-  const [history, setHistory] = useState<HistoryRow[]>(() => load('hist', SEED))
+  const [history, setHistory] = useState<HistoryRow[]>(() => load(k('hist'), SEED))
   const [soundOn, setSoundOn] = useState(sound.enabled)
   const [phase, setPhase] = useState<Phase>('idle')
   const [landed, setLanded] = useState<Outcome | null>(null)
   const [res, setRes] = useState<UpgradeResult | null>(null)
+  const [chain, setChain] = useState<{ i: number; stake: number; target: number; odds: Odds } | null>(null)
+  const [fx, setFx] = useState<{ source: Item; first: Item; final: Item; quick: boolean; done: () => void } | null>(null)
   const [picker, setPicker] = useState<null | 'source' | 'target'>(null)
   const [toasts, setToasts] = useState<{ id: number; m: string }[]>([])
   const wheel = useRef<WheelHandle>(null)
@@ -48,30 +60,41 @@ export default function App() {
   }, [])
   const remember = useCallback((items: Item[]) => setCache(c => { const n = { ...c }; items.forEach(i => (n[i.id] = i)); return n }), [])
   useEffect(() => { catalog.getMany([...inv.map(i => i.itemId), ...(tgtId ? [tgtId] : [])]).then(remember).catch(() => toast('Не удалось загрузить каталог')) }, [inv, tgtId, remember, toast])
-  useEffect(() => save('inv', inv), [inv]); useEffect(() => save('src', srcUid), [srcUid]); useEffect(() => save('tgt', tgtId), [tgtId])
-  useEffect(() => save('bal', balance), [balance]); useEffect(() => save('hist', history.slice(0, 30)), [history])
+  useEffect(() => save(k('inv'), inv), [inv]); useEffect(() => save(k('src'), srcUid), [srcUid]); useEffect(() => save(k('tgt'), tgtId), [tgtId])
+  useEffect(() => save(k('hist'), history.slice(0, 30)), [history])
 
   const srcEntry = inv.find(i => i.uid === srcUid) ?? null
   const source = srcEntry ? cache[srcEntry.itemId] ?? null : null
   const target = tgtId ? cache[tgtId] ?? null : null
   const odds = useMemo(() => calcOdds(source?.price ?? 0, target?.price ?? 0), [source, target])
+  const shownOdds = chain ? chain.odds : odds
+  useEffect(() => { if (phase === 'idle') setChain(null) }, [phase])
   const busy = phase === 'spinning' || phase === 'clover'
   const canGo = !!source && !!target && odds.valid && !busy
 
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
   const run = async (s: Item, t: Item, uidToSpend: string) => {
-    setLanded(null); setRes(null); setPhase('spinning'); sound.play('start')
+    setLanded(null); setRes(null); setChain(null); setPhase('spinning'); sound.play('start')
     try {
       const r = await upgradeApi.perform(s, t)
-      await wheel.current!.spin(r.roll)
-      sound.play('stop'); setLanded(r.outcome)
-      // применяем результат (в продакшене инвентарь придёт с сервера)
+      remember([r.final, r.first, ...r.steps.map(x => x.targetItem)].filter(Boolean) as Item[])
+      for (let i = 0; i < r.steps.length; i++) {
+        const st = r.steps[i]
+        if (i > 0) { setChain({ i, stake: st.stake, target: st.target, odds: st.odds }); await sleep(60); wheel.current!.reset(); await sleep(700) }
+        await wheel.current!.spin(st.roll)
+        sound.play('stop'); setLanded(st.outcome)
+        await sleep(700)
+        if (st.outcome === 'clover' && i < r.steps.length - 1) {
+          sound.play('clover'); setPhase('clover')
+          await new Promise<void>(done => setFx({ source: i === 0 ? s : r.steps[i].targetItem, first: st.targetItem, final: r.steps[i + 1].targetItem, quick: i > 0, done }))
+          setFx(null); setLanded(null); setPhase('spinning')
+        }
+      }
       const add = r.final ? [{ uid: uid(), itemId: r.final.id }] : []
-      remember([r.final, r.first].filter(Boolean) as Item[])
       setInv(v => [...v.filter(i => i.uid !== uidToSpend), ...add]); setSrcUid(null); setRes(r)
       setHistory(h => [{ id: uid(), player: 'Вы', hue: 140, src: s.name, srcPrice: s.price ?? 0, dst: r.final?.name, dstPrice: r.final?.price ?? undefined, status: r.outcome === 'win' ? 'win' : r.outcome, you: true }, ...h])
-      await new Promise(x => setTimeout(x, 700))
-      if (r.outcome === 'clover') { sound.play('clover'); setPhase('clover') } else { sound.play(r.outcome === 'win' ? 'win' : 'fail'); setPhase('result') }
-    } catch (e) { setPhase('idle'); toast((e as Error).message) }
+      sound.play(r.final ? (r.steps.length > 1 ? 'clover' : 'win') : 'fail'); setPhase('result')
+    } catch (e) { setFx(null); setPhase('idle'); toast((e as Error).message) }
   }
   const go = () => canGo && srcEntry && run(source!, target!, srcEntry.uid)
 
@@ -91,25 +114,26 @@ export default function App() {
 
   return (
     <div className="app">
-      <Navbar balance={balance} onTopUp={() => { setBalance(b => b + 50); toast('Демо: +$50 на тестовый баланс') }} sound={soundOn}
+      <Navbar balance={balance} user={user} onTopUp={() => toast('Пополнение баланса пока не подключено')} sound={soundOn}
         onSound={() => { sound.setEnabled(!soundOn); setSoundOn(!soundOn); sound.play('select') }} onToast={toast} />
       <main>
         <div className="head">
           <div><h1>Апгрейдер</h1><p>Улучшайте предмет до более дорогого. Шанс считается по цене, сектор Clover — всегда {odds.cloverChance || 5}%.</p></div>
-          {isDemoCatalog && <div className="demo-banner">Демо-режим: инвентарь и цены локальные, Steam не подключён</div>}
+          {isDemoCatalog && <div className="demo-banner">Демо: инвентарь и цены локальные. Вход и баланс — настоящие (Steam + сервер)</div>}
         </div>
         <div className="workspace">
           <SourceSkinCard item={source} disabled={busy} onSelect={() => { sound.play('select'); setPicker('source') }} onClear={() => { setSrcUid(null); sound.play('select') }} />
           <div className="center">
-            <UpgradeWheel ref={wheel} odds={odds} landed={landed} spinning={phase === 'spinning'} />
+            {chain && <div className="chain-banner"><Clover size={14} /> Цепочка Clover x2 · колесо {chain.i + 1} · {money(chain.stake)} → {money(chain.target)}</div>}
+            <UpgradeWheel ref={wheel} odds={shownOdds} landed={landed} spinning={phase === 'spinning'} />
             <button className="btn go" disabled={!canGo} onClick={go}>{phase === 'spinning' ? 'Вращение…' : 'Апгрейд'}</button>
             <div className="odds" aria-live="polite">
-              <div><span>Основной шанс</span><b>{odds.valid ? odds.winChance.toFixed(2) + '%' : '—'}</b></div>
-              <div className="o-clover"><span><Clover size={13} /> Clover</span><b>{odds.cloverChance ? odds.cloverChance + '%' : '—'}</b></div>
-              <div><span>Множитель</span><b>x{odds.cloverMultiplier}</b></div>
-              <div><span>Всего на успех</span><b>{odds.valid ? odds.totalWin.toFixed(2) + '%' : '—'}</b></div>
+              <div><span>Основной шанс</span><b>{shownOdds.valid ? shownOdds.winChance.toFixed(2) + '%' : '—'}</b></div>
+              <div className="o-clover"><span><Clover size={13} /> Clover</span><b>{shownOdds.cloverChance ? shownOdds.cloverChance + '%' : '—'}</b></div>
+              <div><span>Множитель</span><b>x{shownOdds.cloverMultiplier}</b></div>
+              <div><span>Всего на успех</span><b>{shownOdds.valid ? shownOdds.totalWin.toFixed(2) + '%' : '—'}</b></div>
             </div>
-            <p className="math">{odds.valid ? `Шанс = ${money(source!.price!)} / ${money(target!.price!)} × 95% (комиссия 5%). Clover x2: до ${money(odds.cloverCeiling)}. Ожидаемый возврат ${money(odds.expectedReturn)}.`
+            <p className="math">{chain ? `Колесо ${chain.i + 1}: ставка ${money(chain.stake)} → ${money(chain.target)}, шанс ${chain.odds.winChance}%. Clover снова удваивает и ведёт на следующее колесо, fail — потеря всего.` : odds.valid ? `Шанс = ${money(source!.price!)} / ${money(target!.price!)} × 95% (комиссия 5%). Clover x2: до ${money(odds.cloverCeiling)}. Ожидаемый возврат ${money(odds.expectedReturn)}.`
               : source && target ? 'Цель должна быть дороже вашего предмета.' : 'Выберите предмет и цель — шанс рассчитается автоматически.'}</p>
           </div>
           <TargetSkinCard item={target} source={source} odds={odds} disabled={busy} onSelect={() => { sound.play('select'); setPicker('target') }} onClear={() => { setTgtId(null); sound.play('select') }} />
@@ -120,7 +144,7 @@ export default function App() {
       {picker && <SkinSelectorModal mode={picker === 'source' ? 'inventory' : 'catalog'} fetcher={picker === 'source' ? pickSource : pickTarget}
         selected={picker === 'source' ? srcUid ?? undefined : tgtId ?? undefined} onClose={() => setPicker(null)}
         onPick={e => { sound.play('select'); if (picker === 'source') setSrcUid(e.uid!); else { remember([e.item]); setTgtId(e.item.id) } setLanded(null); setPicker(null) }} />}
-      {phase === 'clover' && res?.first && res.final && <CloverX2Animation source={res.source} first={res.first} final={res.final} onDone={() => setPhase('result')} />}
+      {fx && <CloverX2Animation source={fx.source} first={fx.first} final={fx.final} quick={fx.quick} onDone={fx.done} />}
       {phase === 'result' && res && <UpgradeResultModal res={res} onClose={() => { setPhase('idle'); setLanded(null) }} onRepeat={repeat} onNew={() => { setPhase('idle'); setLanded(null); setPicker('source') }} />}
       <div className="toasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="toast">{t.m}</div>)}</div>
     </div>
