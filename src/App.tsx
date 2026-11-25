@@ -1,35 +1,161 @@
-import {useEffect,useMemo,useState} from 'react'
-import {catalog} from './services/itemCatalog'
-import type {Item} from './services/types'
-import './styles.css'
-const money=(n:number)=>`${Math.round(n).toLocaleString('ru-RU')} DP`
-const uid=()=>Math.random().toString(36).slice(2,10)
-type Owned={uid:string;item:Item}
-type CaseDef={name:string;subtitle:string;cost:number;color:string;icon:string;min:number;max:number;tag:string}
-const CASES:CaseDef[]=[
-['Начальный','Первые шаги',250,'#7f9e89','◈',1,12,'ДЛЯ НОВИЧКОВ'],['Dust','Пыльная классика',450,'#bda477','⌁',2,25,'DUST'],['Neon','Неоновые ночи',700,'#6c91ed','✦',5,45,'NEON'],['Toxic','Ядовитая коллекция',950,'#73d354','☣',8,65,'TOXIC'],['Inferno','Огненный дроп',1250,'#e77b4b','♨',10,90,'INFERNO'],['Ice','Холодный шанс',1600,'#70c9e9','❄',12,120,'ICE'],['Cyber','Киберпанк',2200,'#b46bea','⌘',18,180,'CYBER'],['Royal','Королевский',3000,'#d5b35b','♛',25,240,'ROYAL'],['Violet','Фиолетовый рейд',4200,'#a77de6','✧',30,320,'VIOLET'],['Rogue','Разбойник',5500,'#db536d','⚔',40,420,'ROGUE'],['Chrome','Хром',7000,'#b6c6d2','◉',50,550,'CHROME'],['Phantom','Фантом',9000,'#7c81c9','☽',65,700,'PHANTOM'],['Venom','Веном',12000,'#69c56b','♜',80,950,'VENOM'],['Arcane','Магия',16000,'#d18ad8','✷',100,1200,'ARCANE'],['Glacier','Ледник',21000,'#5da8d9','❅',140,1600,'GLACIER'],['Gold','Золотой',28000,'#d9b34f','♙',180,2200,'GOLD'],['Mythic','Мифический',36000,'#e28e57','✹',250,3000,'MYTHIC'],['Elite','Элитный',48000,'#a6d66a','⬡',350,4200,'ELITE'],['Clover','Удача',65000,'#43e477','♣',500,6500,'CLOVER'],['Blackout','Ночной максимум',90000,'#77778e','◐',700,10000,'BLACKOUT']
-].map(([name,subtitle,cost,color,icon,min,max,tag])=>({name,subtitle,cost:Number(cost),color:String(color),icon:String(icon),min:Number(min),max:Number(max),tag:String(tag)}))
-const read=<T,>(k:string,f:T):T=>{try{const x=localStorage.getItem('scx.'+k);return x?JSON.parse(x):f}catch{return f}}
-export default function App(){
- const [items,setItems]=useState<Item[]>([]),[catalogLoading,setCatalogLoading]=useState(true),[catalogError,setCatalogError]=useState('')
- const [dp,setDp]=useState(()=>read('dp',5000)),[inv,setInv]=useState<Owned[]>(()=>read('inv',[])),[tab,setTab]=useState('cases'),[opening,setOpening]=useState(false),[reward,setReward]=useState<Owned|null>(null),[daily,setDaily]=useState(()=>read('daily','')),[history,setHistory]=useState<string[]>(()=>read('history',[])),[cloverChance,setCloverChance]=useState(()=>read('clover',20)),[activation,setActivation]=useState(()=>read('activation',50)),[search,setSearch]=useState(''),[casePick,setCasePick]=useState<CaseDef|null>(null),[admin,setAdmin]=useState(()=>read('admin',false)),[notice,setNotice]=useState('')
- useEffect(()=>{catalog.search({text:'',category:'all',sort:'price-asc'} as any).then(v=>{setItems(v.filter(i=>i.price&&i.image));setCatalogLoading(false)}).catch(e=>{setCatalogError('Источник каталога временно недоступен. Попробуйте перезагрузить каталог.');setCatalogLoading(false)})},[])
- useEffect(()=>{localStorage.setItem('scx.dp',JSON.stringify(dp));localStorage.setItem('scx.inv',JSON.stringify(inv));localStorage.setItem('scx.daily',JSON.stringify(daily));localStorage.setItem('scx.history',JSON.stringify(history));localStorage.setItem('scx.clover',JSON.stringify(cloverChance));localStorage.setItem('scx.activation',JSON.stringify(activation));localStorage.setItem('scx.admin',JSON.stringify(admin))},[dp,inv,daily,history,cloverChance,activation,admin])
- const filtered=useMemo(()=>items.filter(i=>i.name.toLowerCase().includes(search.toLowerCase())),[items,search])
- const notify=(s:string)=>{setNotice(s);setTimeout(()=>setNotice(''),2800)}
- const today=new Date().toISOString().slice(0,10)
- const claim=()=>{if(daily===today)return;setDp(x=>x+1200);setDaily(today);notify('Ежедневная награда: +1 200 DP')}
- const openCase=async(c:CaseDef)=>{if(opening)return;if(dp<c.cost){notify('Недостаточно DP');return}if(items.length<8){notify('Каталог скинов пока не загрузился');return}setOpening(true);setCasePick(c);setDp(x=>x-c.cost);await new Promise(r=>setTimeout(r,1800));const pool=items.filter(i=>i.price!=null&&i.price*100>=c.min&&i.price*100<=c.max);const available=pool.length?pool:items;const chosen=available[Math.floor(Math.random()*available.length)];const got={uid:uid(),item:chosen};setInv(x=>[got,...x]);setReward(got);setHistory(x=>[`${c.name}: ${chosen.name} · ${money((chosen.price||0)*100)}`,...x].slice(0,30));setOpening(false)}
- const sell=(owned:Owned)=>{const value=Math.round((owned.item.price||0)*100*.7);setInv(x=>x.filter(o=>o.uid!==owned.uid));setDp(x=>x+value);notify(`Продано за ${money(value)}`)}
- const contract=()=>{const chosen=inv.slice(0,5);if(chosen.length<3){notify('Для контракта нужно минимум 3 скина');return}const val=chosen.reduce((s,x)=>s+(x.item.price||0)*100,0);setInv(x=>x.filter(o=>!chosen.some(c=>c.uid===o.uid)));const pool=items.filter(i=>(i.price||0)*100<=val*1.15&& (i.price||0)*100>=val*.65);if(!pool.length){setDp(x=>x+Math.floor(val*.8));notify('Контракт завершён: компенсация 80% в DP');return}const won=pool[Math.floor(Math.random()*pool.length)];const got={uid:uid(),item:won};setInv(x=>[got,...x]);setReward(got);setHistory(x=>[`Контракт: ${won.name}`,...x].slice(0,30));notify('Контракт выполнен!')}
- const tabs=[['cases','КЕЙСЫ'],['inventory','ИНВЕНТАРЬ'],['contract','КОНТРАКТЫ'],['upgrade','АПГРЕЙД'],['missions','ЗАДАНИЯ'],['admin','АДМИН']]
- return <div className="scx"><header className="scx-nav"><div className="scx-brand"><img src="/logo.png"/><b>Skin<span>Chance</span></b></div><nav>{tabs.map(([id,label])=><button className={tab===id?'active':''} onClick={()=>setTab(id)} key={id}>{label}</button>)}</nav><div className="scx-wallet"><img src="/dp-coin.png"/><b>{money(dp)}</b><button onClick={claim} title="Ежедневная награда">＋</button></div></header>
- <main className="scx-main"><div className="scx-top"><div><small>SKINCHANCE / DIGITAL DROP</small><h1>{tab==='cases'?'Открывай. Забирай. Повторяй.':tabs.find(x=>x[0]===tab)?.[1]}</h1><p>Виртуальные DP · отдельный инвентарь · без Steam-трейдов</p></div><div className="scx-status">{catalogLoading?'Подключаем каталог…':catalogError||`${items.length.toLocaleString()} предметов доступно`}</div></div>
- {tab==='cases'&&<><div className="scx-hero"><div><label>НОВАЯ СИСТЕМА КЕЙСОВ</label><h2>Твой следующий<br/><em>дроп начинается здесь.</em></h2><p>20 тематических кейсов · предметы CS2 · ежедневные DP</p><button onClick={claim} disabled={daily===today}> {daily===today?'Награда получена':'Забрать +1 200 DP'} </button></div><div className="scx-hero-art"><div className="scx-bigcase">♣<span>SC</span></div><div className="scx-orbit">✦　✧　♢</div></div></div><section className="scx-casegrid">{CASES.map((c,n)=><article className="scx-case" key={c.name} style={{'--case-color':c.color} as any}><div className="scx-case-art"><div className="scx-casebox"><span>{c.icon}</span><small>{c.tag}</small><b>SC / {String(n+1).padStart(2,'0')}</b></div><div className="scx-glow"/></div><div className="scx-caseinfo"><small>{c.subtitle}</small><h3>{c.name}</h3><button disabled={opening||dp<c.cost} onClick={()=>openCase(c)}>{opening&&casePick?.name===c.name?'Открываем…':`Открыть · ${money(c.cost)}`}</button></div></article>)}</section></>}
- {tab==='inventory'&&<section><div className="scx-tools"><input placeholder="Поиск предметов…" value={search} onChange={e=>setSearch(e.target.value)}/><b>{inv.length} предметов</b></div><div className="scx-items">{inv.filter(x=>x.item.name.toLowerCase().includes(search.toLowerCase())).map(o=><article className="scx-item" key={o.uid}><div className="scx-itemimg"><img src={o.item.image||''}/></div><small>{o.item.weapon}</small><b>{o.item.skin}</b><span>{money((o.item.price||0)*100)}</span><button onClick={()=>sell(o)}>Продать · 70%</button></article>)}</div>{!inv.length&&<div className="scx-empty">Инвентарь пуст. Открой кейс, чтобы получить предметы.</div>}</section>}
- {tab==='contract'&&<section className="scx-panel"><h2>Контракт обмена</h2><p>Обмени первые 3–5 предметов на один предмет в пределах рассчитанной стоимости.</p><div className="scx-contractitems">{inv.slice(0,5).map(o=><div key={o.uid}><img src={o.item.image||''}/><b>{o.item.name}</b><small>{money((o.item.price||0)*100)}</small></div>)}</div><button className="scx-action" onClick={contract}>Собрать контракт (3–5 предметов)</button><p className="scx-muted">Если подходящего предмета нет, возвращается 80% стоимости в DP.</p></section>}
- {tab==='upgrade'&&<section className="scx-panel"><h2>Апгрейд · Clover x2</h2><p>Ставь предмет из DP-инвентаря на более дорогой. Успех — предмет сохраняется, проигрыш — предмет теряется.</p><div className="scx-upgrid"><label>Предмет<input readOnly value={inv[0]?.item.name||'Нет предмета в инвентаре'}/></label><label>Цель<select id="target"><option>Выберите цель из каталога</option>{items.filter(i=>(i.price||0)*100>(inv[0]?.item.price||0)*100).slice(0,200).map(i=><option key={i.id} value={i.id}>{i.name} · {money((i.price||0)*100)}</option>)}</select></label></div><button className="scx-action" onClick={()=>{const s=inv[0],id=(document.getElementById('target') as HTMLSelectElement)?.value,t=items.find(i=>i.id===id);if(!s||!t){notify('Выбери предмет и цель');return}const odds=Math.min(95,(s.item.price||0)/(t.price||1)*95);let clover=false;if(Math.random()*100<cloverChance&&Math.random()*100<activation){clover=true;const limit=(s.item.price||0)*2;const doubled=items.filter(i=>(i.price||0)<=limit&&(i.price||0)>=(s.item.price||0)*1.2);if(doubled.length){const won=doubled[Math.floor(Math.random()*doubled.length)];setInv(x=>[...x.filter(o=>o.uid!==s.uid),{uid:uid(),item:won}]);setReward({uid:uid(),item:won});setHistory(x=>[`CLOVER x2: ${won.name}`,...x].slice(0,30));notify(`🍀 Clover x2! Получено ${won.name}`);return}}if(Math.random()*100<odds){setInv(x=>[...x.filter(o=>o.uid!==s.uid),{uid:uid(),item:t}]);setReward({uid:uid(),item:t});notify(`Успех! ${t.name}`)}else{setInv(x=>x.filter(o=>o.uid!==s.uid));notify('Неудача — предмет потерян')}}}>Запустить апгрейд</button></section>}
- {tab==='missions'&&<section className="scx-missions"><article><b>Ежедневный бонус</b><p>Зайди сегодня и получи DP</p><button onClick={claim} disabled={daily===today}>{daily===today?'Получено':'Забрать 1 200 DP'}</button></article><article><b>Коллекционер</b><p>Получай предметы, пополняй инвентарь</p><strong>{inv.length}/10</strong></article><article><b>Открытия</b><p>История последних действий</p>{history.slice(0,6).map((h,i)=><small key={i}>{h}</small>)}</article></section>}
- {tab==='admin'&&<section className="scx-panel"><h2>Админ-инструменты (локальная сессия)</h2><p>Пока настройки хранятся в браузере, не на сервере. Включение здесь не даёт серверных прав.</p><button onClick={()=>setAdmin(x=>!x)}>{admin?'Выключить режим':'Включить режим'}</button>{admin&&<div className="scx-admin"><label>DP баланс<input type="number" value={dp} onChange={e=>setDp(Math.max(0,+e.target.value))}/></label><label>Clover сектор (%)<input type="number" min="0" max="100" value={cloverChance} onChange={e=>setCloverChance(Math.max(0,Math.min(100,+e.target.value)))}/></label><label>Активация Clover (%)<input type="number" min="0" max="100" value={activation} onChange={e=>setActivation(Math.max(0,Math.min(100,+e.target.value)))}/></label><button onClick={()=>{setInv([]);setHistory([]);notify('Локальные данные сброшены')}}>Сбросить инвентарь и историю</button></div>}</section>}
- </main>{opening&&<div className="scx-opening"><div className="scx-openbox" style={{color:casePick?.color}}>♣</div><h2>Открываем {casePick?.name}…</h2><div className="scx-progress"><i/></div></div>}{reward&&<div className="scx-modal" onClick={()=>setReward(null)}><div className="scx-reward" onClick={e=>e.stopPropagation()}><button className="scx-close" onClick={()=>setReward(null)}>×</button><small>ПОЛУЧЕН ПРЕДМЕТ</small><img src={reward.item.image||''}/><h2>{reward.item.name}</h2><p>{money((reward.item.price||0)*100)}</p><button onClick={()=>setReward(null)}>Забрать в инвентарь</button></div></div>}{notice&&<div className="scx-toast">{notice}</div>}</div>
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { calcOdds, type Odds, type Outcome } from './lib/odds'
+import { sound } from './lib/sound'
+import { load, money, save } from './lib/storage'
+import { catalog } from './services/itemCatalog'
+import { upgradeApi, type UpgradeResult } from './services/upgradeService'
+import type { Entry, Item, Query } from './services/types'
+import { Navbar } from './components/Navbar'
+import { SourceSkinCard, TargetSkinCard } from './components/SkinCards'
+import { UpgradeWheel, type WheelHandle } from './components/UpgradeWheel'
+import { SkinSelectorModal } from './components/SkinSelectorModal'
+import { CloverX2Animation } from './components/CloverX2Animation'
+import { UpgradeResultModal } from './components/UpgradeResultModal'
+import { UpgradeHistory, type HistoryRow } from './components/UpgradeHistory'
+import { Clover } from './components/ui'
+import { fetchMe, type AuthState, type User } from './lib/auth'
+import { LoginScreen } from './components/LoginScreen'
+import { AdminPanel, ProfilePanel } from './components/AccountPanels'
+
+interface Inv { uid: string; itemId: string }
+const uid = () => Math.random().toString(36).slice(2, 10)
+// Steam inventory is fetched from the signed-in user's public inventory endpoint.
+const DEMO_INV: Inv[] = [{uid:'starter-p250',itemId:'p250-sand-dune-ft'},{uid:'starter-glock',itemId:'glock-18-water-elemental-ft'},{uid:'starter-p90',itemId:'p90-asiimov-ft'}]
+const SEED: HistoryRow[] = [
+  { id: 's1', player: 'Nord', hue: 150, src: 'P90 | Asiimov', srcPrice: 5.1, dst: 'AWP | Hyper Beast', dstPrice: 48, status: 'win' },
+  { id: 's2', player: 'Vektor', hue: 30, src: 'Tec-9 | Fuel Injector', srcPrice: 2.4, dst: 'AK-47 | Redline', dstPrice: 32, status: 'clover' },
+  { id: 's3', player: 'Lira', hue: 260, src: 'AWP | Asiimov', srcPrice: 62, status: 'fail' },
+  { id: 's4', player: 'Kaito', hue: 200, src: 'M4A4 | Asiimov', srcPrice: 44, dst: 'Karambit | Doppler', dstPrice: 760, status: 'fail' },
+]
+type Phase = 'idle' | 'spinning' | 'clover' | 'result'
+
+export default function App() {
+  const [auth, setAuth] = useState<AuthState>({ status: 'loading' })
+  useEffect(() => { fetchMe().then(a => setAuth(a.status === 'out' && !a.error && new URLSearchParams(location.search).get('auth_error') ? { status: 'out', error: 'Не удалось войти через Steam, попробуйте ещё раз' } : a)) }, [])
+  if (auth.status === 'loading') return <div className="app boot"><Clover size={56} className="spin" /></div>
+  if (auth.status === 'out') return <LoginScreen error={auth.error} />
+  return <Game key={auth.user.id} user={auth.user} balance={auth.balance} />
+}
+
+function Game({ user, balance }: { user: User; balance: number }) {
+  const k = (n: string) => `${user.id}.${n}`
+  const [inv, setInv] = useState<Inv[]>(() => load(k('inv-v2'), DEMO_INV))
+  const [inventoryLoading, setInventoryLoading] = useState(false)
+  const [inventoryError, setInventoryError] = useState('')
+  const [srcUid, setSrcUid] = useState<string | null>(() => load(k('src'), null))
+  const [tgtId, setTgtId] = useState<string | null>(() => load(k('tgt'), null))
+  const [cache, setCache] = useState<Record<string, Item>>({})
+  const [history, setHistory] = useState<HistoryRow[]>(() => load(k('hist'), SEED))
+  const [soundOn, setSoundOn] = useState(sound.enabled)
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [landed, setLanded] = useState<Outcome | null>(null)
+  const [res, setRes] = useState<UpgradeResult | null>(null)
+  const [chain, setChain] = useState<{ i: number; stake: number; target: number; odds: Odds } | null>(null)
+  const [fx, setFx] = useState<{ source: Item; first: Item; final: Item; quick: boolean; done: () => void } | null>(null)
+  const [picker, setPicker] = useState<null | 'source' | 'target'>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const adminIds = (import.meta.env.VITE_ADMIN_STEAM_IDS || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+  const isAdmin = adminIds.includes(user.id)
+  const [toasts, setToasts] = useState<{ id: number; m: string }[]>([])
+  const wheel = useRef<WheelHandle>(null)
+
+  const toast = useCallback((m: string) => {
+    const id = Date.now() + Math.random(); setToasts(t => [...t.slice(-2), { id, m }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200)
+  }, [])
+  const remember = useCallback((items: Item[]) => setCache(c => { const n = { ...c }; items.forEach(i => (n[i.id] = i)); return n }), [])
+  // SkinChance uses its own DP wallet inventory, independent of Steam inventory.
+  useEffect(() => { catalog.all().then(all => { remember(all); setInventoryLoading(false); if (!inv.length) setInventoryError('Ваш DP-инвентарь пуст. Предметы появляются после успешных апгрейдов.') }).catch(() => { setInventoryLoading(false); setInventoryError('Не удалось загрузить каталог предметов') }) }, [])
+  useEffect(() => { catalog.getMany([...inv.map(i => i.itemId), ...(tgtId ? [tgtId] : [])]).then(remember).catch(() => toast('Не удалось загрузить каталог')) }, [inv, tgtId, remember, toast])
+  useEffect(() => save(k('inv-v2'), inv), [inv]); useEffect(() => save(k('src'), srcUid), [srcUid]); useEffect(() => save(k('tgt'), tgtId), [tgtId])
+  useEffect(() => save(k('hist'), history.slice(0, 30)), [history])
+
+  const srcEntry = inv.find(i => i.uid === srcUid) ?? null
+  const source = srcEntry ? cache[srcEntry.itemId] ?? null : null
+  const target = tgtId ? cache[tgtId] ?? null : null
+  const odds = useMemo(() => calcOdds(source?.price ?? 0, target?.price ?? 0), [source, target])
+  const shownOdds = chain ? chain.odds : odds
+  useEffect(() => { if (phase === 'idle') setChain(null) }, [phase])
+  const busy = phase === 'spinning' || phase === 'clover'
+  const canGo = !!source && !!target && odds.valid && !busy
+
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+  const run = async (s: Item, t: Item, uidToSpend: string) => {
+    setLanded(null); setRes(null); setChain(null); setPhase('spinning'); sound.play('start')
+    try {
+      const r = await upgradeApi.perform(s, t)
+      remember([r.final, r.first, ...r.steps.map(x => x.targetItem)].filter(Boolean) as Item[])
+      for (let i = 0; i < r.steps.length; i++) {
+        const st = r.steps[i]
+        if (i > 0) { setChain({ i, stake: st.stake, target: st.target, odds: st.odds }); await sleep(60); wheel.current!.reset(); await sleep(700) }
+        await wheel.current!.spin(st.roll)
+        sound.play('stop'); setLanded(st.outcome)
+        await sleep(700)
+        if (st.outcome === 'clover' && i < r.steps.length - 1) {
+          sound.play('clover'); setPhase('clover')
+          await new Promise<void>(done => setFx({ source: i === 0 ? s : r.steps[i].targetItem, first: st.targetItem, final: r.steps[i + 1].targetItem, quick: i > 0, done }))
+          setFx(null); setLanded(null); setPhase('spinning')
+        }
+      }
+      const add = r.final ? [{ uid: uid(), itemId: r.final.id }] : []
+      setInv(v => [...v.filter(i => i.uid !== uidToSpend), ...add]); setSrcUid(null); setRes(r)
+      setHistory(h => [{ id: uid(), player: 'Вы', hue: 140, src: s.name, srcPrice: s.price ?? 0, dst: r.final?.name, dstPrice: r.final?.price ?? undefined, status: r.outcome === 'win' ? 'win' : r.outcome, you: true }, ...h])
+      sound.play(r.final ? (r.steps.length > 1 ? 'clover' : 'win') : 'fail'); setPhase('result')
+    } catch (e) { setFx(null); setPhase('idle'); toast((e as Error).message) }
+  }
+  const go = () => canGo && srcEntry && run(source!, target!, srcEntry.uid)
+
+  const repeat = () => {
+    const last = res?.source; setPhase('idle'); setLanded(null)
+    const same = last && inv.find(i => i.itemId === last.id)
+    if (same) { setSrcUid(same.uid); toast('Выбрана копия предмета — нажмите «Апгрейд»') }
+    else { toast('Предмет списан — выберите новый'); setPicker('source') }
+  }
+  const pickSource = useCallback(async (q: Query): Promise<Entry[]> => {
+    const all = await catalog.search(q), by = new Map(all.map(i => [i.id, i]))
+    return inv.filter(e => by.has(e.itemId)).map(e => ({ item: by.get(e.itemId)!, uid: e.uid, disabledReason: e.itemId === tgtId ? 'Уже цель' : undefined }))
+      .sort((a, b) => all.indexOf(a.item) - all.indexOf(b.item))
+  }, [inv, tgtId])
+  const pickTarget = useCallback(async (q: Query): Promise<Entry[]> => (await catalog.search(q)).filter(i => i.price != null).map(item => ({
+    item, disabledReason: source && (item.price ?? 0) <= (source.price ?? 0) ? 'Дешевле предмета' : undefined })), [source])
+
+  return (
+    <div className="app">
+      <Navbar balance={balance} user={user} onTopUp={() => toast('Пополнение баланса пока не подключено')} sound={soundOn}
+        onSound={() => { sound.setEnabled(!soundOn); setSoundOn(!soundOn); sound.play('select') }} onToast={toast} onProfile={() => setProfileOpen(true)} onAdmin={() => setAdminOpen(true)} isAdmin={isAdmin} />
+      <main>
+        <div className="head">
+          <div><h1>SkinChance <span className="headline-accent">Upgrade</span></h1><p>DP-инвентарь · улучшайте предметы, ловите Clover и продолжайте x2-цепочку. Clover появляется с шансом 20%.</p></div>
+          {inventoryLoading && <div className="demo-banner">Загружаю отдельный DP-инвентарь…</div>}{inventoryError && <div className="demo-banner">{inventoryError}</div>}
+        <div className="feature-strip"><span>🟢 Clover <b>20%</b></span><span>🎯 Активация <b>50%</b></span><span>↗ x2 цепочка <b>шанс снижается</b></span><span>🎒 <b>DP-инвентарь</b> отдельно от Steam</span></div></div>
+        <div className="workspace">
+          <SourceSkinCard item={source} disabled={busy} onSelect={() => { sound.play('select'); setPicker('source') }} onClear={() => { setSrcUid(null); sound.play('select') }} />
+          <div className="center">
+            {chain && <div className="chain-banner"><Clover size={14} /> Цепочка Clover x2 · колесо {chain.i + 1} · {money(chain.stake)} → {money(chain.target)}</div>}
+            <UpgradeWheel ref={wheel} odds={shownOdds} landed={landed} spinning={phase === 'spinning'} />
+            <button className="btn go" disabled={!canGo} onClick={go}>{phase === 'spinning' ? 'Вращение…' : 'Апгрейд'}</button>
+            <div className="odds" aria-live="polite">
+              <div><span>Основной шанс</span><b>{shownOdds.valid ? shownOdds.winChance.toFixed(2) + '%' : '—'}</b></div>
+              <div className="o-clover"><span><Clover size={13} /> Clover</span><b>{shownOdds.cloverChance ? shownOdds.cloverChance + '%' : '—'}</b></div>
+              <div><span>Множитель</span><b>x{shownOdds.cloverMultiplier}</b></div>
+              <div><span>Всего на успех</span><b>{shownOdds.valid ? shownOdds.totalWin.toFixed(2) + '%' : '—'}</b></div>
+            </div>
+            <p className="math">{chain ? `Цепочка x2: ${money(chain.stake)} → ${money(chain.target)}. Шанс следующего удвоения снижается на 20% от предыдущего; проигрыш обнуляет цепочку.` : odds.valid ? `Обычный шанс зависит от соотношения цен. Clover выпадает с вероятностью 20%; активация x2 начинается с 50%, затем шанс каждой следующей ступени уменьшается на 20% относительно предыдущей (50 → 40 → 32 → 25.6…), минимум 15%.`
+              : source && target ? 'Цель должна быть дороже вашего предмета.' : 'Выберите предмет и цель — шанс рассчитается автоматически.'}</p>
+          </div>
+          <TargetSkinCard item={target} source={source} odds={odds} disabled={busy} onSelect={() => { sound.play('select'); setPicker('target') }} onClear={() => { setTgtId(null); sound.play('select') }} />
+        </div>
+        <UpgradeHistory rows={history} />
+      </main>
+
+      {picker && <SkinSelectorModal mode={picker === 'source' ? 'inventory' : 'catalog'} fetcher={picker === 'source' ? pickSource : pickTarget}
+        selected={picker === 'source' ? srcUid ?? undefined : tgtId ?? undefined} onClose={() => setPicker(null)}
+        onPick={e => { sound.play('select'); if (picker === 'source') setSrcUid(e.uid!); else { remember([e.item]); setTgtId(e.item.id) } setLanded(null); setPicker(null) }} />}
+      {profileOpen && <ProfilePanel user={user} balance={balance} inventory={inv.map(e => cache[e.itemId]).filter(Boolean)} history={history} onClose={() => setProfileOpen(false)} onLogout={() => { location.href = '/api/auth?a=logout' }} />}
+      {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} onToast={toast} />}
+      {fx && <CloverX2Animation source={fx.source} first={fx.first} final={fx.final} quick={fx.quick} onDone={fx.done} />}
+      {phase === 'result' && res && <UpgradeResultModal res={res} onClose={() => { setPhase('idle'); setLanded(null) }} onRepeat={repeat} onNew={() => { setPhase('idle'); setLanded(null); setPicker('source') }} />}
+      <div className="toasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="toast">{t.m}</div>)}</div>
+    </div>
+  )
 }

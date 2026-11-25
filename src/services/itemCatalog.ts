@@ -22,12 +22,12 @@ const mapRow = (r: any): Item => {
 /** Live public CS2 catalogue + prices. API pages are fetched with conservative concurrency and cached in memory. */
 export const publicCatalogProvider: CatalogProvider = { async load() {
   const base = 'https://seekskins.com/api/skins?limit=250&lang=en'
-  const first = await fetch(`${base}&page=1`, { signal: AbortSignal.timeout(12000) }); if (!first.ok) throw new Error(`CS2 каталог: HTTP ${first.status}`)
+  const first = await fetch(`${base}&page=1`); if (!first.ok) throw new Error(`CS2 каталог: HTTP ${first.status}`)
   const firstJson: any = await first.json(); if (!firstJson.success || !Array.isArray(firstJson.data)) throw new Error('CS2 каталог вернул неизвестный формат')
-  const pages = Math.min(Number(firstJson.pagination?.totalPages) || 1, 8)
+  const pages = Math.min(Number(firstJson.pagination?.totalPages) || 1, 160)
   const rows: any[] = [...firstJson.data]
   let next = 2
-  const workers = Array.from({length: 4}, async () => { while (next <= pages) { const page = next++; const res = await fetch(`${base}&page=${page}`, { signal: AbortSignal.timeout(12000) }); if (!res.ok) continue; const j:any = await res.json(); if (Array.isArray(j.data)) rows.push(...j.data) } })
+  const workers = Array.from({length: 4}, async () => { while (next <= pages) { const page = next++; const res = await fetch(`${base}&page=${page}`); if (!res.ok) continue; const j:any = await res.json(); if (Array.isArray(j.data)) rows.push(...j.data) } })
   await Promise.all(workers)
   return rows.map(mapRow)
 } }
