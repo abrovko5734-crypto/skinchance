@@ -43,6 +43,7 @@ export function SkinSelectorModal({ mode, fetcher, selected, onPick, onClose }: 
             <option value="price-desc">Цена ↓</option><option value="price-asc">Цена ↑</option><option value="rarity">Редкость</option><option value="name">Название</option></select>
         </div>
       </div>
+      <div className="catalog-count">{state === 'ok' ? `Найдено: ${entries.length.toLocaleString()} предметов · отображается ${Math.min(limit, entries.length).toLocaleString()}` : 'Полный каталог и цены загружаются с публичного источника'}</div>
       <div className="grid-wrap">
         {state === 'loading' && <div className="grid">{Array.from({ length: 8 }, (_, i) => <div key={i} className="cell skeleton" />)}</div>}
         {state === 'error' && <div className="state"><p>Не удалось загрузить: {err}</p><button className="btn ghost" onClick={() => setTick(t => t + 1)}>Повторить</button></div>}
