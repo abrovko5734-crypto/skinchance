@@ -20,7 +20,7 @@ import { AdminPanel, ProfilePanel } from './components/AccountPanels'
 interface Inv { uid: string; itemId: string }
 const uid = () => Math.random().toString(36).slice(2, 10)
 // Steam inventory is fetched from the signed-in user's public inventory endpoint.
-const DEMO_INV: Inv[] = []
+const DEMO_INV: Inv[] = [{uid:'starter-p250',itemId:'p250-sand-dune-ft'},{uid:'starter-glock',itemId:'glock-18-water-elemental-ft'},{uid:'starter-p90',itemId:'p90-asiimov-ft'}]
 const SEED: HistoryRow[] = [
   { id: 's1', player: 'Nord', hue: 150, src: 'P90 | Asiimov', srcPrice: 5.1, dst: 'AWP | Hyper Beast', dstPrice: 48, status: 'win' },
   { id: 's2', player: 'Vektor', hue: 30, src: 'Tec-9 | Fuel Injector', srcPrice: 2.4, dst: 'AK-47 | Redline', dstPrice: 32, status: 'clover' },
@@ -64,7 +64,8 @@ function Game({ user, balance }: { user: User; balance: number }) {
     const id = Date.now() + Math.random(); setToasts(t => [...t.slice(-2), { id, m }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200)
   }, [])
   const remember = useCallback((items: Item[]) => setCache(c => { const n = { ...c }; items.forEach(i => (n[i.id] = i)); return n }), [])
-  useEffect(() => { if (inv.length) return; let active=true; setInventoryLoading(true); fetch('/api/auth?a=inventory',{credentials:'same-origin'}).then(async r=>{const j:any=await r.json(); if(!r.ok) throw new Error(j.message||'Steam инвентарь недоступен'); const all=await catalog.all(); const normalize=(n:string)=>n.toLowerCase().replace(/^★\s*/, '').replace(/^(stattrak™\s*|souvenir\s*)/,'').trim(); const byName=new Map(all.map(i=>[normalize(i.name),i])); const found:Inv[]=(j.items||[]).map((x:any)=>byName.get(normalize(String(x.marketHashName)))).filter(Boolean).map((item:any)=>({uid:uid(),itemId:item.id})); if(active){setInv(found);setInventoryError(found.length?'': 'В публичном Steam-инвентаре не найдено предметов из каталога.');remember(all.filter(i=>found.some(f=>f.itemId===i.id)))} }).catch(e=>{if(active)setInventoryError(e.message)}).finally(()=>active&&setInventoryLoading(false)); return()=>{active=false} },[])
+  // SkinChance uses its own DP wallet inventory, independent of Steam inventory.
+  useEffect(() => { catalog.all().then(all => { remember(all); setInventoryLoading(false); if (!inv.length) setInventoryError('Ваш DP-инвентарь пуст. Предметы появляются после успешных апгрейдов.') }).catch(() => { setInventoryLoading(false); setInventoryError('Не удалось загрузить каталог предметов') }) }, [])
   useEffect(() => { catalog.getMany([...inv.map(i => i.itemId), ...(tgtId ? [tgtId] : [])]).then(remember).catch(() => toast('Не удалось загрузить каталог')) }, [inv, tgtId, remember, toast])
   useEffect(() => save(k('inv-v2'), inv), [inv]); useEffect(() => save(k('src'), srcUid), [srcUid]); useEffect(() => save(k('tgt'), tgtId), [tgtId])
   useEffect(() => save(k('hist'), history.slice(0, 30)), [history])
@@ -124,9 +125,9 @@ function Game({ user, balance }: { user: User; balance: number }) {
         onSound={() => { sound.setEnabled(!soundOn); setSoundOn(!soundOn); sound.play('select') }} onToast={toast} onProfile={() => setProfileOpen(true)} onAdmin={() => setAdminOpen(true)} isAdmin={isAdmin} />
       <main>
         <div className="head">
-          <div><h1>Апгрейдер</h1><p>Улучшайте предмет до более дорогого. Шанс считается по цене, сектор Clover — всегда {odds.cloverChance || 5}%.</p></div>
-          {inventoryLoading && <div className="demo-banner">Загружаю ваш публичный Steam-инвентарь…</div>}{inventoryError && <div className="demo-banner">{inventoryError} · Сделайте инвентарь Steam публичным и обновите страницу.</div>}
-        </div>
+          <div><h1>SkinChance <span className="headline-accent">Upgrade</span></h1><p>DP-инвентарь · улучшайте предметы, ловите Clover и продолжайте x2-цепочку. Clover появляется с шансом 20%.</p></div>
+          {inventoryLoading && <div className="demo-banner">Загружаю отдельный DP-инвентарь…</div>}{inventoryError && <div className="demo-banner">{inventoryError}</div>}
+        <div className="feature-strip"><span>🟢 Clover <b>20%</b></span><span>🎯 Активация <b>50%</b></span><span>↗ x2 цепочка <b>шанс снижается</b></span><span>🎒 <b>DP-инвентарь</b> отдельно от Steam</span></div></div>
         <div className="workspace">
           <SourceSkinCard item={source} disabled={busy} onSelect={() => { sound.play('select'); setPicker('source') }} onClear={() => { setSrcUid(null); sound.play('select') }} />
           <div className="center">
@@ -139,7 +140,7 @@ function Game({ user, balance }: { user: User; balance: number }) {
               <div><span>Множитель</span><b>x{shownOdds.cloverMultiplier}</b></div>
               <div><span>Всего на успех</span><b>{shownOdds.valid ? shownOdds.totalWin.toFixed(2) + '%' : '—'}</b></div>
             </div>
-            <p className="math">{chain ? `Колесо ${chain.i + 1}: ставка ${money(chain.stake)} → ${money(chain.target)}, шанс ${chain.odds.winChance}%. Clover снова удваивает и ведёт на следующее колесо, fail — потеря всего.` : odds.valid ? `Шанс = ${money(source!.price!)} / ${money(target!.price!)} × 95% (комиссия 5%). Clover x2: до ${money(odds.cloverCeiling)}. Ожидаемый возврат ${money(odds.expectedReturn)}.`
+            <p className="math">{chain ? `Цепочка x2: ${money(chain.stake)} → ${money(chain.target)}. Шанс следующего удвоения снижается на 20% от предыдущего; проигрыш обнуляет цепочку.` : odds.valid ? `Обычный шанс зависит от соотношения цен. Clover выпадает с вероятностью 20%; активация x2 начинается с 50%, затем шанс каждой следующей ступени уменьшается на 20% относительно предыдущей (50 → 40 → 32 → 25.6…), минимум 15%.`
               : source && target ? 'Цель должна быть дороже вашего предмета.' : 'Выберите предмет и цель — шанс рассчитается автоматически.'}</p>
           </div>
           <TargetSkinCard item={target} source={source} odds={odds} disabled={busy} onSelect={() => { sound.play('select'); setPicker('target') }} onClear={() => { setTgtId(null); sound.play('select') }} />

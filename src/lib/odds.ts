@@ -1,6 +1,6 @@
 // Чистая математика. Не зависит от UI. Всё, что видит пользователь, берётся отсюда же.
 export interface OddsConfig { cloverChance: number; cloverMultiplier: number; minChance: number; maxChance: number; edge: number }
-export const DEFAULT_ODDS: OddsConfig = { cloverChance: 5, cloverMultiplier: 2, minChance: 1, maxChance: 90, edge: 0.05 }
+export const DEFAULT_ODDS: OddsConfig = { cloverChance: 20, cloverMultiplier: 2, minChance: 1, maxChance: 80, edge: 0.05 }
 export type Outcome = 'win' | 'clover' | 'fail'
 export interface Odds {
   valid: boolean
@@ -21,7 +21,7 @@ export function calcOdds(source: number, target: number, c: OddsConfig = DEFAULT
   const clover = valid ? c.cloverChance : 0
   const ceiling = r2(target * c.cloverMultiplier)
   return {
-    valid, winChance: win, cloverChance: clover, failChance: r2(100 - win - clover), totalWin: r2(win + clover),
+    valid, winChance: win, cloverChance: clover, failChance: r2(Math.max(0, 100 - win - clover)), totalWin: r2(win + clover),
     cloverMultiplier: c.cloverMultiplier, cloverCeiling: ceiling,
     expectedReturn: valid ? r2((win / 100) * target + (clover / 100) * ceiling) : 0,
   }

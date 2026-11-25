@@ -1,43 +1,27 @@
 import { calcOdds, resolveRoll, secureRoll, type Odds, type Outcome } from '../lib/odds'
 import { catalog } from './itemCatalog'
 import type { Item } from './types'
-
-/** Одно колесо цепочки: ставка → цель, шанс считается по ценам. */
-export interface Step { stake: number; target: number; odds: Odds; roll: number; outcome: Outcome; targetItem: Item }
+export interface Step { stake: number; target: number; odds: Odds; roll: number; outcome: Outcome; targetItem: Item; cloverRoll?: number; cloverChance?: number }
 export interface UpgradeResult { outcome: Outcome; roll: number; odds: Odds; source: Item; target: Item; first?: Item; final?: Item; steps: Step[] }
-
-/** Сколько колёс цепочки Clover возможно после первого (600→1200 … 4800→9600). */
-export const MAX_CHAIN = 4
-
-/**
- * ЛОКАЛЬНАЯ ДЕМО-РЕАЛИЗАЦИЯ. В продакшене perform() = POST /api/upgrade: все roll и цепочка определяются сервером,
- * клиент только анимирует steps.
- * Правила: колесо 1 — предмет → цель. Clover = приз x2 и новое колесо (ставка = удвоенный приз, цель = ставка x2).
- * На любом колесе: win — забираете цель этого колеса, fail — теряете всё, Clover — следующее колесо.
- * Clover на последнем колесе цепочки засчитывается как win (потолок).
- */
+export const MAX_CHAIN = 8
+const cloverOdds = (chance: number): Odds => ({ valid:true, winChance:chance, cloverChance:0, failChance:100-chance, totalWin:chance, cloverMultiplier:2, cloverCeiling:0, expectedReturn:0 })
 export interface UpgradeApi { perform(source: Item, target: Item): Promise<UpgradeResult> }
+/** Demo-only RNG: production results MUST be decided by a server-side endpoint. */
 export const upgradeApi: UpgradeApi = {
-  async perform(source, target) {
-    let odds = calcOdds(source.price ?? 0, target.price ?? 0)
-    if (!odds.valid) throw new Error('Цена цели должна быть выше цены предмета')
-    const steps: Step[] = []
-    let stake = source.price!, tPrice = target.price!, tItem = target, final: Item | undefined
-    for (let i = 0; i <= MAX_CHAIN; i++) {
-      const roll = secureRoll()
-      let outcome = resolveRoll(roll, odds)
-      if (i === MAX_CHAIN && outcome === 'clover') outcome = 'win'
-      steps.push({ stake, target: tPrice, odds, roll, outcome, targetItem: tItem })
-      if (outcome === 'win') { final = tItem; break }
-      if (outcome === 'fail') break
-      stake = i === 0 ? tPrice * 2 : stake * 2
-      tPrice = stake * 2
-      tItem = await catalog.closest(tPrice, 0, tItem)
-      odds = calcOdds(stake, tPrice)
-    }
-    await new Promise(r => setTimeout(r, 150))
-    const chained = steps.length > 1
-    return { outcome: chained ? (final ? 'clover' : 'fail') : steps[0].outcome, roll: steps[0].roll, odds: steps[0].odds, source, target,
-      first: chained ? steps[0].targetItem : undefined, final, steps }
-  },
+ async perform(source,target) {
+  const base=calcOdds(source.price??0,target.price??0); if(!base.valid) throw new Error('Цена цели должна быть выше цены предмета')
+  const steps:Step[]=[]; let odds=base, stake=source.price!, targetPrice=target.price!, targetItem=target, final:Item|undefined, cloverTier=0
+  for(let i=0;i<=MAX_CHAIN;i++){
+   const roll=secureRoll(); let outcome=resolveRoll(roll,odds); let cloverRoll:number|undefined, cloverChance:number|undefined
+   if(outcome==='clover'){ cloverChance=Math.max(15,50*Math.pow(0.8,cloverTier)); cloverRoll=secureRoll(); if(cloverRoll < cloverChance) outcome='clover'; else outcome='fail'; }
+   steps.push({stake,target:targetPrice,odds,roll,outcome,targetItem,cloverRoll,cloverChance})
+   if(outcome==='win'){final=targetItem;break}
+   if(outcome==='fail') break
+   // Clover activation gives the x2 prize and starts another attempt. Every following activation becomes harder.
+   cloverTier++; stake=targetPrice; targetPrice=stake*2; targetItem=await catalog.closest(targetPrice,0,targetItem)
+   odds=cloverOdds(Math.max(15,50*Math.pow(0.8,cloverTier-1)))
+  }
+  await new Promise(r=>setTimeout(r,120)); const chained=steps.length>1
+  return {outcome: final?(chained?'clover':'win'):'fail',roll:steps[0].roll,odds:steps[0].odds,source,target,first:chained?steps[0].targetItem:undefined,final,steps}
+ }
 }
