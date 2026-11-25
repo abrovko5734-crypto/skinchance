@@ -37,8 +37,8 @@ export function SkinSelectorModal({ mode, fetcher, selected, onPick, onClose }: 
           <select value={q.rarity} onChange={e => set('rarity', e.target.value)} aria-label="Редкость"><option value="">Любая редкость</option>{RARITIES.map(r => <option key={r}>{r}</option>)}</select>
           <select value={q.wear} onChange={e => set('wear', e.target.value)} aria-label="Качество"><option value="">Любое качество</option>{WEARS.map(w => <option key={w}>{w}</option>)}</select>
           <select value={q.special} onChange={e => set('special', e.target.value as Query['special'])} aria-label="Тип"><option value="all">Обычные и особые</option><option value="stattrak">StatTrak™</option><option value="souvenir">Souvenir</option></select>
-          <input className="num" inputMode="decimal" placeholder="Мин $" onChange={e => set('min', num(e.target.value))} aria-label="Минимальная цена" />
-          <input className="num" inputMode="decimal" placeholder="Макс $" onChange={e => set('max', num(e.target.value))} aria-label="Максимальная цена" />
+          <input className="num" inputMode="decimal" placeholder="Мин DP" onChange={e => set('min', num(e.target.value))} aria-label="Минимальная цена" />
+          <input className="num" inputMode="decimal" placeholder="Макс DP" onChange={e => set('max', num(e.target.value))} aria-label="Максимальная цена" />
           <select value={q.sort} onChange={e => set('sort', e.target.value as Query['sort'])} aria-label="Сортировка">
             <option value="price-desc">Цена ↓</option><option value="price-asc">Цена ↑</option><option value="rarity">Редкость</option><option value="name">Название</option></select>
         </div>
