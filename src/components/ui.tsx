@@ -2,14 +2,9 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import { RARITY_COLOR, type Item } from '../services/types'
 
 export function Clover({ size = 24, className = '', style }: { size?: number; className?: string; style?: CSSProperties }) {
-  const leaf = 'M50 50C41 43 31 35 31 25C31 15 44 12 50 22C56 12 69 15 69 25C69 35 59 43 50 50Z'
-  return (
-    <svg className={className} style={style} width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden>
-      {[0, 90, 180, 270].map(r => <path key={r} d={leaf} fill="currentColor" transform={`rotate(${r} 50 50)`} />)}
-      <path d="M52 52Q53 72 64 88" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-    </svg>
-  )
+  return <img src="/clover.png" className={className} style={{ width: size, height: size, objectFit: 'contain', ...style }} alt="" aria-hidden />
 }
+
 const P: Record<string, string> = {
   search: 'M11 4a7 7 0 105 11.9l4.5 4.6 1.4-1.4-4.6-4.5A7 7 0 0011 4z', x: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14',
   vol: 'M4 9v6h4l5 4V5L8 9H4zm12 0a4 4 0 010 6', mute: 'M4 9v6h4l5 4V5L8 9H4zm13 1l5 5m0-5l-5 5', user: 'M12 12a4 4 0 100-8 4 4 0 000 8zm-7 8a7 7 0 0114 0',
