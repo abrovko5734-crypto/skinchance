@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { calcOdds, type Odds, type Outcome } from './lib/odds'
 import { sound } from './lib/sound'
 import { load, money, save } from './lib/storage'
-import { catalog } from './services/itemCatalog'
+import { catalog, isDemoCatalog } from './services/itemCatalog'
+import { makeId } from './services/sampleCatalog'
 import { upgradeApi, type UpgradeResult } from './services/upgradeService'
 import type { Entry, Item, Query } from './services/types'
 import { Navbar } from './components/Navbar'
@@ -19,8 +20,9 @@ import { AdminPanel, ProfilePanel } from './components/AccountPanels'
 
 interface Inv { uid: string; itemId: string }
 const uid = () => Math.random().toString(36).slice(2, 10)
-// Steam inventory is fetched from the signed-in user's public inventory endpoint.
-const DEMO_INV: Inv[] = []
+// Демо-инвентарь (НЕ Steam). Замените на ответ реального API инвентаря.
+const DEMO_INV: Inv[] = [['AK-47', 'Redline', 'FT'], ['P90', 'Asiimov', 'FT'], ['M4A1-S', 'Hyper Beast', 'FT'], ['Glock-18', 'Water Elemental', 'FT'], ['AWP', 'Asiimov', 'FT'], ['Tec-9', 'Fuel Injector', 'FT'], ['P2000', 'Fire Elemental', 'FT']]
+  .map(([w, s, x]) => ({ uid: uid(), itemId: makeId(w, s, x) }))
 const SEED: HistoryRow[] = [
   { id: 's1', player: 'Nord', hue: 150, src: 'P90 | Asiimov', srcPrice: 5.1, dst: 'AWP | Hyper Beast', dstPrice: 48, status: 'win' },
   { id: 's2', player: 'Vektor', hue: 30, src: 'Tec-9 | Fuel Injector', srcPrice: 2.4, dst: 'AK-47 | Redline', dstPrice: 32, status: 'clover' },
@@ -39,9 +41,7 @@ export default function App() {
 
 function Game({ user, balance }: { user: User; balance: number }) {
   const k = (n: string) => `${user.id}.${n}`
-  const [inv, setInv] = useState<Inv[]>(() => load(k('inv-v2'), DEMO_INV))
-  const [inventoryLoading, setInventoryLoading] = useState(false)
-  const [inventoryError, setInventoryError] = useState('')
+  const [inv, setInv] = useState<Inv[]>(() => load(k('inv'), DEMO_INV))
   const [srcUid, setSrcUid] = useState<string | null>(() => load(k('src'), null))
   const [tgtId, setTgtId] = useState<string | null>(() => load(k('tgt'), null))
   const [cache, setCache] = useState<Record<string, Item>>({})
@@ -64,9 +64,8 @@ function Game({ user, balance }: { user: User; balance: number }) {
     const id = Date.now() + Math.random(); setToasts(t => [...t.slice(-2), { id, m }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200)
   }, [])
   const remember = useCallback((items: Item[]) => setCache(c => { const n = { ...c }; items.forEach(i => (n[i.id] = i)); return n }), [])
-  useEffect(() => { if (inv.length) return; let active=true; setInventoryLoading(true); fetch('/api/auth?a=inventory',{credentials:'same-origin'}).then(async r=>{const j:any=await r.json(); if(!r.ok) throw new Error(j.message||'Steam инвентарь недоступен'); const all=await catalog.all(); const normalize=(n:string)=>n.toLowerCase().replace(/^★\s*/, '').replace(/^(stattrak™\s*|souvenir\s*)/,'').trim(); const byName=new Map(all.map(i=>[normalize(i.name),i])); const found:Inv[]=(j.items||[]).map((x:any)=>byName.get(normalize(String(x.marketHashName)))).filter(Boolean).map((item:any)=>({uid:uid(),itemId:item.id})); if(active){setInv(found);setInventoryError(found.length?'': 'В публичном Steam-инвентаре не найдено предметов из каталога.');remember(all.filter(i=>found.some(f=>f.itemId===i.id)))} }).catch(e=>{if(active)setInventoryError(e.message)}).finally(()=>active&&setInventoryLoading(false)); return()=>{active=false} },[])
   useEffect(() => { catalog.getMany([...inv.map(i => i.itemId), ...(tgtId ? [tgtId] : [])]).then(remember).catch(() => toast('Не удалось загрузить каталог')) }, [inv, tgtId, remember, toast])
-  useEffect(() => save(k('inv-v2'), inv), [inv]); useEffect(() => save(k('src'), srcUid), [srcUid]); useEffect(() => save(k('tgt'), tgtId), [tgtId])
+  useEffect(() => save(k('inv'), inv), [inv]); useEffect(() => save(k('src'), srcUid), [srcUid]); useEffect(() => save(k('tgt'), tgtId), [tgtId])
   useEffect(() => save(k('hist'), history.slice(0, 30)), [history])
 
   const srcEntry = inv.find(i => i.uid === srcUid) ?? null
@@ -125,7 +124,7 @@ function Game({ user, balance }: { user: User; balance: number }) {
       <main>
         <div className="head">
           <div><h1>Апгрейдер</h1><p>Улучшайте предмет до более дорогого. Шанс считается по цене, сектор Clover — всегда {odds.cloverChance || 5}%.</p></div>
-          {inventoryLoading && <div className="demo-banner">Загружаю ваш публичный Steam-инвентарь…</div>}{inventoryError && <div className="demo-banner">{inventoryError} · Сделайте инвентарь Steam публичным и обновите страницу.</div>}
+          {isDemoCatalog && <div className="demo-banner">Демо: инвентарь и цены локальные. Вход и баланс — настоящие (Steam + сервер)</div>}
         </div>
         <div className="workspace">
           <SourceSkinCard item={source} disabled={busy} onSelect={() => { sound.play('select'); setPicker('source') }} onClear={() => { setSrcUid(null); sound.play('select') }} />

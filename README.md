@@ -44,16 +44,3 @@ Steam login и баланс требуют настройки Vercel + Upstash R
 
 ## Что намеренно не имитируется как «готовое»
 Админ-панель, баны, выдача баланса, платежи/вывод и Steam-инвентарь не подключены к backend в этом проекте. Они требуют серверных API и проверки прав; кнопки/эндпоинты из отдельного примера нельзя безопасно добавлять как клиентские действия.
-
-
-## Live catalogue, inventory and administration (updated)
-
-- Target selector fetches the full paginated public catalogue from SeekSkins (metadata, images, wears and marketplace prices where present). It caches the catalogue in memory for the current page session. The source is independent from Valve.
-- Prices are source-provided marketplace values only; missing prices remain blank and items without prices cannot be used as upgrade targets. No demo prices are fabricated.
-- Source inventory is read from the signed-in Steam account's public inventory (`730/2`). If the Steam inventory is private, the page displays the error.
-- Admin actions are protected server-side by `ADMIN_STEAM_IDS`, comma-separated SteamID64s. Set this variable in Vercel in addition to the client visibility variable `VITE_ADMIN_STEAM_IDS`.
-- Admin panel currently supports Redis account lookup, setting/adding balance, banning/unbanning, persisted Clover percent and audit log. Clover setting is saved but is not yet wired into the client-side demo upgrade odds.
-- Real upgrade history/counting and server-authoritative upgrade outcomes are not implemented; the panel does not fake these stats.
-- Required Vercel environment variables: `SESSION_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `ADMIN_STEAM_IDS`, `VITE_ADMIN_STEAM_IDS`.
-
-Data catalogue API: SeekSkins public read-only API, described at https://seekskins.com/en/developers. Please keep request volume moderate; the catalogue uses 4 concurrent page fetches.
