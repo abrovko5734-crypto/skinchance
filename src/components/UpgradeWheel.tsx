@@ -1,82 +1,261 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { sectorRanges, type Odds, type Outcome } from '../lib/odds'
 import { sound } from '../lib/sound'
-import { Clover } from './ui'
 
-const C = 200, RO = 188, RI = 142
-const pt = (r: number, deg: number) => { const a = ((deg - 90) * Math.PI) / 180; return [C + r * Math.cos(a), C + r * Math.sin(a)] }
-function arc(a0: number, a1: number) {
-  if (a1 - a0 < 0.05) return ''
-  if (a1 - a0 >= 359.9) a1 = a0 + 359.9
-  const [x0, y0] = pt(RO, a0), [x1, y1] = pt(RO, a1), [x2, y2] = pt(RI, a1), [x3, y3] = pt(RI, a0), l = a1 - a0 > 180 ? 1 : 0
-  return `M${x0} ${y0}A${RO} ${RO} 0 ${l} 1 ${x1} ${y1}L${x2} ${y2}A${RI} ${RI} 0 ${l} 0 ${x3} ${y3}Z`
+/**
+ * Стиль как CaseSer: сектора стоят, крутится СТРЕЛКА по кругу.
+ * 0° = верх, по часовой.
+ */
+export interface WheelHandle {
+  spin(roll: number, oddsOverride?: Odds): Promise<void>
+  reset(): void
 }
-export interface WheelHandle { spin(roll: number): Promise<void>; reset(): void }
-interface Props { odds: Odds; landed: Outcome | null; spinning: boolean }
+
+interface Props {
+  odds: Odds
+  landed: Outcome | null
+  spinning: boolean
+}
+
 const reduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spinning }, ref) => {
-  const rot = useRef<SVGGElement>(null), angle = useRef(0), oddsRef = useRef(odds)
+  const needle = useRef<SVGGElement>(null)
+  const angle = useRef(0)
+  const oddsRef = useRef(odds)
+  const spinningRef = useRef(spinning)
   oddsRef.current = odds
-  const r = sectorRanges(odds), cMid = (r.clover[0] + r.clover[1]) / 2
-  const ticks = Array.from({ length: 72 }, (_, i) => i * 5)
+  spinningRef.current = spinning
 
-  // при смене шанса возвращаем колесо в исходное положение
+  const r = sectorRanges(odds)
+  // Сектора в градусах: win [0..win], clover [win..win+clover], fail rest
+  // У CaseSer часто «победа» снизу/сбоку — оставляем win сверху (0°)
+
   useEffect(() => {
-    if (spinning || !rot.current) return
-    rot.current.style.transition = 'transform .5s cubic-bezier(.2,.8,.2,1)'
-    rot.current.style.transform = 'rotate(0deg)'; angle.current = 0
-  }, [odds.winChance, odds.valid]) // eslint-disable-line
+    if (spinningRef.current || !needle.current) return
+    needle.current.style.transition = 'transform .4s cubic-bezier(.2,.8,.2,1)'
+    needle.current.style.transform = 'rotate(0deg)'
+    angle.current = 0
+  }, [odds.winChance, odds.cloverChance, odds.valid])
 
   useImperativeHandle(ref, () => ({
-    reset() { if (rot.current) { rot.current.style.transition = 'none'; rot.current.style.transform = 'rotate(0deg)'; angle.current = 0 } },
-    spin(roll: number) {
-      return new Promise<void>(res => {
-        const o = oddsRef.current, el = rot.current!, rg = sectorRanges(o)
-        const key: Outcome = roll < o.winChance ? 'win' : roll < o.winChance + o.cloverChance ? 'clover' : 'fail'
-        const [a0, a1] = rg[key], a = Math.min(a1 - 0.6, Math.max(a0 + 0.6, roll * 3.6))
-        const from = angle.current, to = from - (from % 360) + 360 * 6 + (360 - a)
+    reset() {
+      if (needle.current) {
+        needle.current.style.transition = 'none'
+        needle.current.style.transform = 'rotate(0deg)'
+        angle.current = 0
+      }
+    },
+    spin(roll: number, oddsOverride?: Odds) {
+      return new Promise<void>((resolve) => {
+        const o = oddsOverride ?? oddsRef.current
+        if (oddsOverride) oddsRef.current = oddsOverride
+        const el = needle.current
+        if (!el) {
+          resolve()
+          return
+        }
+        const rg = sectorRanges(o)
+        const key: Outcome =
+          roll < o.winChance ? 'win' : roll < o.winChance + o.cloverChance ? 'clover' : 'fail'
+        const [a0, a1] = rg[key]
+        const span = Math.max(a1 - a0, 0.8)
+        // точка остановки внутри сектора (чуть со смещением)
+        const target = a0 + span * 0.4 + ((roll * 17) % 100) / 100 * span * 0.25
+
+        const from = angle.current
+        // 6–8 оборотов по часовой + до target
+        const turns = 6 + Math.floor((roll % 10) / 3)
+        const to = from - (from % 360) + 360 * turns + target
+
         el.style.transition = 'none'
-        const dur = reduce() ? 600 : 5800, t0 = performance.now()
-        const ss = (x: number) => x * x * (3 - 2 * x)
-        const ease = (t: number) => (1 - (1 - t) ** 4) * (t < 0.15 ? ss(t / 0.15) : 1)
-        let last = Math.floor(from / 12)
+        const dur = reduce() ? 800 : 4800
+        const t0 = performance.now()
+        // ease-out cubic
+        const ease = (t: number) => 1 - Math.pow(1 - t, 3.4)
+        let lastTick = Math.floor(from / 8)
+
         const frame = (now: number) => {
-          const t = Math.min(1, (now - t0) / dur), v = from + (to - from) * ease(t)
+          const t = Math.min(1, (now - t0) / dur)
+          const v = from + (to - from) * ease(t)
           el.style.transform = `rotate(${v}deg)`
-          const k = Math.floor(v / 12); if (k !== last) { last = k; if (t < 0.97) sound.play('tick') }
-          if (t < 1) requestAnimationFrame(frame); else { angle.current = to; res() }
+          const k = Math.floor(v / 8)
+          if (k !== lastTick) {
+            lastTick = k
+            if (t < 0.95) sound.play('tick')
+          }
+          if (t < 1) requestAnimationFrame(frame)
+          else {
+            angle.current = to
+            resolve()
+          }
         }
         requestAnimationFrame(frame)
       })
     },
   }))
 
+  // SVG geometry
+  const CX = 200
+  const CY = 200
+  const RO = 168 // outer ring
+  const RI = 118 // inner hole
+  const TRACK = 22
+
+  const polar = (deg: number, rad: number) => {
+    const a = ((deg - 90) * Math.PI) / 180
+    return [CX + rad * Math.cos(a), CY + rad * Math.sin(a)]
+  }
+
+  const arcPath = (a0: number, a1: number, outer: number, inner: number) => {
+    if (a1 - a0 < 0.08) return ''
+    let end = a1
+    if (end - a0 >= 359.9) end = a0 + 359.9
+    const large = end - a0 > 180 ? 1 : 0
+    const [x0, y0] = polar(a0, outer)
+    const [x1, y1] = polar(end, outer)
+    const [x2, y2] = polar(end, inner)
+    const [x3, y3] = polar(a0, inner)
+    return `M${x0} ${y0}A${outer} ${outer} 0 ${large} 1 ${x1} ${y1}L${x2} ${y2}A${inner} ${inner} 0 ${large} 0 ${x3} ${y3}Z`
+  }
+
+  // ticks every 5°
+  const ticks = Array.from({ length: 72 }, (_, i) => i * 5)
+
+  const winDeg = Math.min(360, Math.max(0, odds.winChance * 3.6))
+  const cloverDeg = Math.min(360 - winDeg, Math.max(0, odds.cloverChance * 3.6))
+
   return (
-    <div className={`wheel ${landed ? 'landed-' + landed : ''} ${spinning ? 'is-spinning' : ''}`}>
-      <svg viewBox="0 0 400 400" role="img" aria-label={`Шанс ${odds.winChance}%, Clover ${odds.cloverChance}%`}>
+    <div className={`wheel caser-style ${landed ? 'landed-' + landed : ''} ${spinning ? 'is-spinning' : ''}`}>
+      <svg viewBox="0 0 400 400" role="img" aria-label={`Шанс ${odds.winChance}%`}>
         <defs>
-          <linearGradient id="gw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#34d813" /><stop offset="1" stopColor="#1f9a0c" /></linearGradient>
-          <linearGradient id="gc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#c8f7a8" /><stop offset="1" stopColor="#8fe06a" /></linearGradient>
+          <linearGradient id="winGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#f0a020" />
+            <stop offset="50%" stopColor="#e8870a" />
+            <stop offset="100%" stopColor="#c96a00" />
+          </linearGradient>
+          <linearGradient id="cloverGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#6ee03a" />
+            <stop offset="100%" stopColor="#2db810" />
+          </linearGradient>
+          <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="arrowShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.55" />
+          </filter>
         </defs>
-        <circle cx={C} cy={C} r={RO + 6} fill="none" stroke="#1d221d" strokeWidth="1.5" />
-        <circle cx={C} cy={C} r={RI - 6} fill="#0e100e" stroke="#1d221d" />
-        <g ref={rot} style={{ transformOrigin: '200px 200px' }}>
-          <path d={arc(r.fail[0], r.fail[1])} fill="#1a1e1a" />
-          {ticks.map(a => a >= r.fail[0] && a <= r.fail[1] && <line key={a} x1={pt(RO - 1, a)[0]} y1={pt(RO - 1, a)[1]} x2={pt(RO - 9, a)[0]} y2={pt(RO - 9, a)[1]} stroke="#2a302a" strokeWidth="1.2" />)}
-          <path className="sec sec-win" d={arc(r.win[0], r.win[1])} fill="url(#gw)" />
-          <path className="sec sec-clover" d={arc(r.clover[0], r.clover[1])} fill="url(#gc)" />
-          {odds.valid && (
-            <g transform={`rotate(${cMid} 200 200)`}><foreignObject x={200 - 11} y={200 - 165 - 11} width="22" height="22"><Clover size={22} className="sec-icon" /></foreignObject></g>
-          )}
+
+        {/* outer dark ring */}
+        <circle cx={CX} cy={CY} r={RO + 10} fill="#0c0e0c" stroke="#1a1e1a" strokeWidth="2" />
+        <circle cx={CX} cy={CY} r={RO + 4} fill="none" stroke="#252a25" strokeWidth="1" />
+
+        {/* track background (fail zone) */}
+        <circle cx={CX} cy={CY} r={(RO + RI) / 2} fill="none" stroke="#1a1e1a" strokeWidth={RO - RI} />
+
+        {/* FAIL sector full ring then overlay win/clover */}
+        <path d={arcPath(0, 360, RO, RI)} fill="#151815" />
+
+        {/* WIN sector — оранжевый как CaseSer */}
+        {winDeg > 0.2 && (
+          <path className="sec sec-win" d={arcPath(0, winDeg, RO, RI)} fill="url(#winGrad)" filter="url(#softGlow)" />
+        )}
+
+        {/* CLOVER sector — зелёный */}
+        {cloverDeg > 0.2 && (
+          <path
+            className="sec sec-clover"
+            d={arcPath(winDeg, winDeg + cloverDeg, RO, RI)}
+            fill="url(#cloverGrad)"
+          />
+        )}
+
+        {/* ticks */}
+        {ticks.map((deg) => {
+          const inWin = deg >= 0 && deg <= winDeg
+          const inClover = deg > winDeg && deg <= winDeg + cloverDeg
+          const [x1, y1] = polar(deg, RO - 2)
+          const [x2, y2] = polar(deg, RO - (deg % 30 === 0 ? 14 : 8))
+          return (
+            <line
+              key={deg}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={inWin || inClover ? 'rgba(0,0,0,0.35)' : '#2a302a'}
+              strokeWidth={deg % 30 === 0 ? 2 : 1}
+              strokeLinecap="round"
+            />
+          )
+        })}
+
+        {/* inner hole */}
+        <circle cx={CX} cy={CY} r={RI - 4} fill="#0e100e" stroke="#1d221d" strokeWidth="2" />
+        <circle cx={CX} cy={CY} r={RI - 14} fill="#0a0c0a" stroke="#181c18" strokeWidth="1" />
+
+        {/* labels 0 50 100 on rim */}
+        <text x={CX} y={CY - RO - 16} textAnchor="middle" fill="#6a726a" fontSize="11" fontWeight="600">
+          0%
+        </text>
+        <text x={CX + RO + 18} y={CY + 4} textAnchor="start" fill="#6a726a" fontSize="11" fontWeight="600">
+          50%
+        </text>
+        <text x={CX} y={CY + RO + 28} textAnchor="middle" fill="#6a726a" fontSize="11" fontWeight="600">
+          100%
+        </text>
+
+        {/* === КРУТЯЩАЯСЯ СТРЕЛКА === */}
+        <g
+          ref={needle}
+          style={{ transformOrigin: '200px 200px', willChange: 'transform' }}
+          filter="url(#arrowShadow)"
+        >
+          {/* линия от центра к краю */}
+          <line
+            x1={CX}
+            y1={CY}
+            x2={CX}
+            y2={CY - RO + 8}
+            stroke="#f5f7f5"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            opacity="0.85"
+          />
+          {/* наконечник-стрелка у обода (смотрит наружу от центра, к сектору) */}
+          <path
+            d={`M${CX} ${CY - RO - 2} L${CX - 11} ${CY - RO + 18} L${CX} ${CY - RO + 12} L${CX + 11} ${CY - RO + 18} Z`}
+            fill="#f0a020"
+            stroke="#1a1000"
+            strokeWidth="1.2"
+          />
+          {/* маленький кружок в центре стрелки */}
+          <circle cx={CX} cy={CY} r="7" fill="#e9ede9" stroke="#0a0b0a" strokeWidth="2" />
+          <circle cx={CX} cy={CY} r="3" fill="#f0a020" />
         </g>
-        <path d="M200 6l-9 -17h18z" transform="translate(0 20)" fill="#e9ede9" stroke="#0a0b0a" strokeWidth="2" />
-        <rect x="199" y="30" width="2" height="32" rx="1" fill="#e9ede9" opacity=".9" />
       </svg>
-      <div className="wheel-hub">
-        <Clover size={34} className="hub-clover" />
-        <strong>{odds.valid ? odds.winChance.toFixed(2) : '—'}<em>%</em></strong>
-        <span>шанс апгрейда</span>
+
+      {/* хаб с процентом — поверх SVG */}
+      <div className="wheel-hub caser-hub">
+        <strong className={landed === 'win' ? 'hub-win' : landed === 'clover' ? 'hub-clover' : ''}>
+          {odds.valid ? odds.winChance.toFixed(2) : '—'}
+          <em>%</em>
+        </strong>
+        <span>
+          {landed === 'win'
+            ? 'Победа!'
+            : landed === 'clover'
+              ? 'Clover ×2'
+              : landed === 'fail'
+                ? 'Промах'
+                : spinning
+                  ? 'Крутим…'
+                  : 'средний шанс'}
+        </span>
       </div>
     </div>
   )

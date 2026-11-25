@@ -1,4 +1,5 @@
 import type { CatalogProvider, Category, Item, Wear } from './types'
+import { resolveSkinImage } from './skinImages'
 
 const W: Record<string, Wear> = {
   FN: 'Factory New',
@@ -98,7 +99,7 @@ export const sampleProvider: CatalogProvider = {
       souvenir: false,
       collection,
       name: makeName(weapon, skin, W[w], st, category === 'knife'),
-      image: null,
+      image: resolveSkinImage({ weapon, skin, wear: W[w], stattrak: st, category }),
       price,
       priceSource: 'demo',
     }))

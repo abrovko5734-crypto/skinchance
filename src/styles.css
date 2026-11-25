@@ -928,3 +928,73 @@ h1{font-size:26px;letter-spacing:-.02em}.head p{color:var(--m);font-size:14px;ma
   .presets { gap: 4px; }
   .preset { padding: 5px 8px; font-size: 11px; }
 }
+
+
+/* ===== CaseSer-style wheel: стрелка крутится ===== */
+.wheel.caser-style {
+  position: relative;
+  width: min(380px, 92vw);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+.wheel.caser-style svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,.45));
+}
+.wheel.caser-style .wheel-hub.caser-hub {
+  position: absolute;
+  left: 0; right: 0;
+  top: 52%;
+  transform: translateY(-10%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+  z-index: 2;
+}
+.wheel.caser-style .wheel-hub.caser-hub strong {
+  font-size: clamp(1.6rem, 5vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #e9ede9;
+  line-height: 1;
+  text-shadow: 0 2px 12px rgba(0,0,0,.5);
+}
+.wheel.caser-style .wheel-hub.caser-hub strong em {
+  font-style: normal;
+  font-size: 0.55em;
+  margin-left: 2px;
+  color: #9aa29a;
+  font-weight: 600;
+}
+.wheel.caser-style .wheel-hub.caser-hub strong.hub-win {
+  color: #f0a020;
+}
+.wheel.caser-style .wheel-hub.caser-hub strong.hub-clover {
+  color: #6ee03a;
+}
+.wheel.caser-style .wheel-hub.caser-hub span {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #7a847a;
+  font-weight: 600;
+}
+.wheel.caser-style.is-spinning .wheel-hub.caser-hub span {
+  color: #f0a020;
+  animation: hub-pulse 0.8s ease-in-out infinite;
+}
+@keyframes hub-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.wheel.caser-style.landed-win .sec-win {
+  filter: brightness(1.25);
+}
+.wheel.caser-style.landed-clover .sec-clover {
+  filter: brightness(1.3);
+}

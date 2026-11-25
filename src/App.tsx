@@ -188,7 +188,7 @@ export default function App() {
     try {
       const result = await upgradeApi.perform(source, target)
       setRes(result)
-      await wheelRef.current?.spin(result.odds, result.roll, result.steps[0].outcome)
+      await wheelRef.current?.spin(result.roll, result.odds)
       setLanded(result.steps[0].outcome)
 
       if (result.steps.length > 1 && result.outcome === 'clover' && result.first && result.final) {
