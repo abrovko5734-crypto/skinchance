@@ -71,3 +71,8 @@ Data catalogue API: SeekSkins public read-only API, described at https://seekski
 
 ## DP Coin asset
 The minimal gold clover DP coin is included at `public/dp-coin.png`. Use it in the UI via `/dp-coin.png`.
+
+## Case Hub refresh
+The app now opens in guest/local mode (no Steam login required), has 20 case tiles, DP balance, local inventory, sell-for-DP action, contract exchange, daily reward, upgrade view, and local admin controls. Catalogue requests are capped to 8 pages to avoid the previous slow-loading issue. The case artwork is generated with CSS rather than external demo images.
+
+**Important limits:** balances, cases, inventory, contracts, and admin controls are browser-local and can be edited by the player. This is not a production backend and not a secure real-money game. Catalog pricing/image availability depends on the public catalogue endpoint and may fail due to CORS/rate limits. Build could not be verified in this environment because dependency installation timed out.
