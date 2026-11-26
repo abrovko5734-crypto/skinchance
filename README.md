@@ -1,52 +1,46 @@
-# SkinChance — CS2 Cases & Upgrader
+# SkinChance — Premium Case Hub
 
-Готовый фронт для деплоя на **Vercel** (через GitHub).
+React + Vite + TypeScript project. The case catalogue, upgrade flow, contracts, inventory, Steam OpenID login and server-side balance are included.
 
-## Возможности
-- Кейсы, апгрейдер (зелёная зона + стрелка), контракты, инвентарь, профиль
-- **Баланс только на сервере (Redis)** — игроки стартуют с 0 DP
-- Пополнение через Telegram **@Keldisqq** → админ выдаёт DP в админ-панели по SteamID
-- Шансы повышены, проценты в UI скрыты
-- Steam OpenID + Redis (Upstash)
+## Local development
 
-## Env на Vercel (Project → Settings → Environment Variables)
-
-| Variable | Описание |
-|----------|----------|
-| `VITE_ADMIN_STEAM_IDS` | SteamID64 админов через запятую |
-| `SESSION_SECRET` | Случайная длинная строка (например `openssl rand -hex 32`) |
-| `UPSTASH_REDIS_REST_URL` | URL Upstash Redis |
-| `UPSTASH_REDIS_REST_TOKEN` | Token Upstash Redis |
-
-Все — Production (и Preview при необходимости).
-
-## Деплой
-
-1. Залейте этот репозиторий на GitHub (или обновите существующий)
-2. Import / Redeploy в [Vercel](https://vercel.com) → Framework Preset: **Vite**
-3. Build Command: `npm run build` · Output: `dist`
-4. Добавьте env выше
-5. Deploy
-
-Локально:
 ```bash
 npm install
 npm run dev
 ```
 
-Сборка: `npm run build` → `dist/`
+## Production build
 
-## Админ
-В админ-панели укажите SteamID64 игрока (17 цифр) и сумму → **Выдать**.  
-Можно выдать себе кнопками «Себе +…».
+```bash
+npm run build
+npm run preview
+```
 
-## API
-- `GET /api/auth?a=me` — сессия + баланс
-- `POST /api/auth?a=credit` — админ: `{ steamId, amount }`
-- `POST /api/auth?a=delta` — игрок: `{ amount }` (кейсы / продажа)
+## Deploy to Vercel (important)
 
-## Live CS2 market prices
+1. Extract the ZIP on your computer. **Do not upload the ZIP file itself** as the project source.
+2. In Vercel choose **Add New → Project** and import the GitHub repository containing the extracted project, or use the Vercel CLI from the extracted `skinchance-main` folder.
+3. Set the project Root Directory to `skinchance-main` only if you uploaded the parent folder. If you uploaded the contents of `skinchance-main` to the repository root, leave Root Directory as `./`.
+4. Framework preset: Vite. Build command: `npm run build`. Output directory: `dist`.
+5. Add the environment variables below, then redeploy.
 
-Skin quotes are requested through `POST /api/prices` from Steam Community Market's public `priceoverview` endpoint (`appid=730`, USD). The server proxy accepts up to 20 exact market hash names per request, limits concurrency, and caches results for two minutes. Missing/unlisted items remain unpriced (`—`); the app no longer fills them with generated demo prices. The Steam endpoint is undocumented and may throttle requests or change its response format, so a failed quote is shown as unavailable rather than guessed.
+### Required Vercel environment variables
 
-The UI displays item market quotes in USD. The in-app wallet remains virtual DP; selling inventory credits `100 DP` per `$1` of the latest available quote. Case opening costs are game-configured DP prices and are not live marketplace prices. For production use with a stronger uptime guarantee, configure a licensed CS2 market data provider and replace the Steam proxy implementation in `api/prices.ts`.
+- `SESSION_SECRET` — long random secret (at least 32 random bytes).
+- `UPSTASH_REDIS_REST_URL` — Upstash Redis REST URL.
+- `UPSTASH_REDIS_REST_TOKEN` — Upstash Redis REST token.
+
+Optional:
+- `VITE_ADMIN_STEAM_IDS` — comma-separated SteamID64 values for the admin UI. The API also checks `ADMIN_STEAM_IDS`; set that server-side too for authorization.
+
+Steam login and the server balance require the environment variables above. Without Redis and a session secret, login/balance endpoints intentionally return a configuration error. Never commit real `.env` files or API tokens to GitHub.
+
+## Market prices
+
+`/api/prices` requests Steam Community Market `priceoverview` server-side for CS2 (appid 730). Steam's endpoint is undocumented and rate-limited; an unavailable quote is returned as unavailable, not fabricated. Price data is indicative and can lag or be blocked by Steam. Case drop odds and the sample catalogue are game configuration, not live Steam data.
+
+## Deployment troubleshooting
+
+- The screenshot's `Error · Add files via upload` is the Vercel upload action failing; it does not show a Vite build log. The visible deployment marked **Ready** is a previously completed deployment.
+- For the upload workflow, extract this archive first and upload the **project files/folders**, not the `.zip` archive. Keep `package.json`, `package-lock.json`, `index.html`, `src/`, `public/`, `api/`, `vercel.json`, and `vite.config.ts` at the project root.
+- If Vercel reports a build error after import, open the failed deployment → **Build Logs** and fix the first actual error. Do not use the generic upload error as evidence of a TypeScript/build failure.

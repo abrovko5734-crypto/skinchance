@@ -66,8 +66,27 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
 
   return (
     <div className="cases-page">
+      <section className="cases-hero">
+        <div className="cases-hero-copy">
+          <span className="hero-kicker"><span className="hero-live-dot" /> SKINCHANCE ORIGINALS</span>
+          <h1>Открывай кейсы.<br /><em>Лови свой дроп.</em></h1>
+          <p>От бюджетных открытий до охоты за ножами и перчатками. Выбирай кейс и испытай удачу.</p>
+          <div className="hero-pills">
+            <span>✦ {CASES.length} уникальных кейсов</span>
+            <span>◈ 5 уровней редкости</span>
+            <span>↗ Цены рынка Steam</span>
+          </div>
+        </div>
+        <div className="cases-hero-art" aria-hidden="true">
+          <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
+          <div className="hero-case hero-case-back"><i /></div>
+          <div className="hero-case hero-case-front"><i /><b>SC</b></div>
+          <div className="hero-spark spark-a">✦</div><div className="hero-spark spark-b">✧</div>
+          <div className="hero-art-caption">YOUR NEXT DROP</div>
+        </div>
+      </section>
       <div className="cases-header">
-        <h2>Кейсы</h2>
+        <div><h2>Выбери свой кейс</h2><p className="cases-subtitle">Каждый кейс — отдельная коллекция скинов</p></div>
         <div className="cases-filters">
           {(['all', 'common', 'rare', 'epic', 'legendary', 'mythic'] as const).map((f) => (
             <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
