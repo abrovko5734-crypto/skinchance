@@ -1,4 +1,4 @@
-import { money } from '../lib/storage'
+import { money, moneyUsd } from '../lib/storage'
 import type { User } from '../lib/auth'
 import { isAdminUser } from '../lib/auth'
 import { Icon } from './ui'
@@ -36,7 +36,7 @@ export function ProfilePage({ user, balance, invCount, invValue, onTopUp }: Prop
         </div>
         <div className="stat">
           <span>Стоимость инвентаря</span>
-          <b>{money(invValue)}</b>
+          <b>{moneyUsd(invValue)}</b>
         </div>
       </div>
       <button className="btn go" onClick={onTopUp}>

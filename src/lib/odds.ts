@@ -10,10 +10,10 @@ export interface OddsConfig {
 
 export const DEFAULT_ODDS: OddsConfig = {
   cloverSector: 8,
-  cloverAppearChance: 45,
+  cloverAppearChance: 100,
   cloverMultiplier: 2,
   minChance: 0.5,
-  maxChance: 95,
+  maxChance: 80,
   edge: 0.02, // 2% house edge — шансы выше
 }
 

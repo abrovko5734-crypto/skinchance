@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { money } from '../lib/storage'
+import { moneyUsd } from '../lib/storage'
 import type { Item } from '../services/types'
 import { ItemImage } from './ui'
 
@@ -18,11 +18,11 @@ export function CloverX2Animation({ source, first, final, onDone, quick }: { sou
         <img src="/clover.png" alt="" className="fx-clover" />
         {stage === 0 && <div className="fx-text"><small>LUCKY HIT</small><h2>CLOVER <span>x2</span></h2><p>ПРИЗ УДВАИВАЕТСЯ · НОВОЕ КОЛЕСО</p></div>}
         {stage === 1 && <div className="fx-pair"><FxItem item={source} label="Было" /><span className="fx-arrow">→</span><FxItem item={first} label="Приз колеса" /></div>}
-        {stage === 2 && <div className="fx-final"><small>Новая ставка x2</small><ItemImage item={final} size="lg" /><h3>{final.name}</h3><strong>{money(final.price ?? 0)}</strong></div>}
+        {stage === 2 && <div className="fx-final"><small>Новая ставка x2</small><ItemImage item={final} size="lg" /><h3>{final.name}</h3><strong>{moneyUsd(final.price)}</strong></div>}
       </div>
     </div>
   )
 }
 const FxItem = ({ item, label }: { item: Item; label: string }) => (
-  <div className="fx-item"><small>{label}</small><ItemImage item={item} size="md" /><b>{item.skin}</b><span>{money(item.price ?? 0)}</span></div>
+  <div className="fx-item"><small>{label}</small><ItemImage item={item} size="md" /><b>{item.skin}</b><span>{moneyUsd(item.price)}</span></div>
 )

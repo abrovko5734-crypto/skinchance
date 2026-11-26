@@ -8,7 +8,7 @@ export const RARITY_COLOR: Record<string, string> = {
 export interface Item {
   id: string; name: string; weapon: string; skin: string; category: Category; rarity: string
   wear: Wear; stattrak: boolean; souvenir: boolean; collection: string
-  image: string | null; price: number | null; priceSource: 'demo' | 'market' | null; float?: number
+  image: string | null; price: number | null; priceSource: 'market' | null; float?: number
 }
 export interface Entry { item: Item; uid?: string; disabledReason?: string }
 export interface Query {

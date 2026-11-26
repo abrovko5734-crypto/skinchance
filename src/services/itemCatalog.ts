@@ -57,37 +57,6 @@ export const remotePrices = (url: string): PriceProvider => ({
 
 const rank = (r: string) => RARITIES.indexOf(r as never)
 
-/** Стабильная цена, если маркет не отдал число. */
-function demoPrice(i: Item): number {
-  const base: Record<string, number> = {
-    'Consumer Grade': 8,
-    'Industrial Grade': 25,
-    'Mil-Spec': 70,
-    Restricted: 220,
-    Classified: 780,
-    Covert: 3200,
-    Contraband: 85000,
-    Extraordinary: 14000,
-  }
-  let p = base[i.rarity] ?? 120
-  if (i.category === 'knife') p = Math.max(p, 6500)
-  if (i.category === 'gloves') p = Math.max(p, 9000)
-  if (i.stattrak) p = Math.round(p * 1.8)
-  const wearMul: Record<string, number> = {
-    'Factory New': 1.35,
-    'Minimal Wear': 1.15,
-    'Field-Tested': 1,
-    'Well-Worn': 0.82,
-    'Battle-Scarred': 0.7,
-  }
-  if (i.wear) p *= wearMul[i.wear] ?? 1
-  // чуть разводим одинаковые редкости, но цена не прыгает между перезагрузками
-  let h = 0
-  for (let k = 0; k < i.id.length; k++) h = (h * 33 + i.id.charCodeAt(k)) >>> 0
-  const jitter = 0.85 + (h % 40) / 100
-  return Math.max(1, Math.round(p * jitter))
-}
-
 class ItemCatalog {
   private cache?: Promise<Item[]>
   private byIdMap?: Map<string, Item>
@@ -116,12 +85,7 @@ class ItemCatalog {
           }
         }
       }
-      // демо-цены: у удалённого каталога цены часто пустые — без них инвентарь и апгрейд ломаются
       for (const i of items) {
-        if (i.price == null || i.price <= 0) {
-          i.price = demoPrice(i)
-          i.priceSource = i.priceSource ?? 'demo'
-        }
         if (!i.image) {
           i.image = resolveSkinImage({
             weapon: i.weapon,
@@ -144,6 +108,19 @@ class ItemCatalog {
       this.byIdMap = undefined
       throw e
     }))
+  }
+
+  async refreshPrices(items: Item[]): Promise<Item[]> {
+    const { fetchMarketPrices } = await import('./marketPrices')
+    const prices = await fetchMarketPrices(items)
+    for (const item of items) {
+      const price = prices[item.name]
+      if (typeof price === 'number') {
+        item.price = price
+        item.priceSource = 'market'
+      }
+    }
+    return items
   }
 
   async load() {

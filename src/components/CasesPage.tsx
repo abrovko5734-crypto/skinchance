@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CASES, openCase, RARITY_LABEL, type GameCase, type CaseDrop } from '../services/cases'
-import { money, moneyShort } from '../lib/storage'
+import { money, moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Item } from '../services/types'
@@ -29,16 +29,19 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
     }
     setOpening(true)
     sound.play('tick')
+    const tickTimers = Array.from({ length: 6 }, (_, i) => window.setTimeout(() => sound.play('tick'), 550 + i * 560))
     const ok = await onSpend(-c.price)
     if (!ok) {
+      tickTimers.forEach((timer) => window.clearTimeout(timer))
       setOpening(false)
       return
     }
-    await new Promise((r) => setTimeout(r, 1100))
+    await new Promise((r) => setTimeout(r, 4200))
     const drop = openCase(c)
     const found = await catalog.byId(drop.itemId)
+    if (found) await catalog.refreshPrices([found])
     const item: Item | null = found
-      ? { ...found, price: drop.price, priceSource: found.priceSource ?? 'demo' }
+      ? { ...found, price: found.price, priceSource: found.priceSource }
       : {
           id: drop.itemId,
           name: drop.itemId.replace(/\|/g, ' | ').replace(/-/g, ' '),
@@ -51,12 +54,13 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
           souvenir: false,
           collection: '',
           image: null,
-          price: drop.price,
-          priceSource: 'demo',
+          price: null,
+          priceSource: null,
         }
+    tickTimers.forEach((timer) => window.clearTimeout(timer))
     setResult({ drop, item })
-    onAddItem(item.id, drop.price, item)
-    sound.play(drop.price > c.price * 2.5 ? 'win' : 'select')
+    onAddItem(item.id, item.price ?? undefined, item)
+    sound.play((item.price ?? 0) > c.price * 2.5 ? 'win' : 'select')
     setOpening(false)
   }
 
@@ -87,7 +91,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
             <div
               className="case-visual"
               style={{
-                background: `linear-gradient(145deg, hsl(${c.hue} 35% 16%) 0%, hsl(${c.hue} 45% 8%) 50%, #0a0b0a 100%)`,
+                background: `linear-gradient(145deg, hsl(${c.hue} 48% 96%) 0%, hsl(${c.hue} 38% 88%) 50%, #e8f0e8 100%)`,
               }}
             >
               <div className="case-box">
@@ -115,9 +119,9 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
             </header>
             <div className="case-open-body">
               <div
-                className="case-preview"
+                className={`case-preview ${opening ? 'opening' : ''}`}
                 style={{
-                  background: `linear-gradient(160deg, hsl(${selected.hue} 40% 18%), hsl(${selected.hue} 30% 8%))`,
+                  background: `linear-gradient(160deg, hsl(${selected.hue} 48% 96%), hsl(${selected.hue} 38% 86%))`,
                 }}
               >
                 <div className="case-box big">
@@ -135,7 +139,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
                     .map((d) => (
                       <div key={d.itemId} className="drop-row">
                         <span className="drop-id">{d.itemId.replace(/\|/g, ' | ').replace(/-/g, ' ')}</span>
-                        <span className="drop-price">{moneyShort(d.price)} DP</span>
+                        <span className="drop-price">Шанс {d.chance}%</span>
                       </div>
                     ))}
                 </div>
@@ -150,13 +154,13 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
                 </button>
               </div>
               {result && (
-                <div className={`case-result ${result.drop.price > selected.price * 2 ? 'big' : ''}`}>
+                <div className={`case-result ${(result.item?.price ?? 0) > selected.price * 2 ? 'big' : ''}`}>
                   <div className="result-label">Выпало</div>
                   {result.item ? (
                     <>
                       <ItemImage item={result.item} size="lg" />
                       <strong>{result.item.name}</strong>
-                      <span className="result-price">{money(result.drop.price)}</span>
+                      <span className="result-price">{result.item?.price != null ? moneyUsd(result.item.price) : 'Нет данных рынка'}</span>
                     </>
                   ) : (
                     <strong>{result.drop.itemId}</strong>

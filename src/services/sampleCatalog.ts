@@ -100,8 +100,8 @@ export const sampleProvider = {
       collection,
       name: makeName(weapon, skin, W[w], st, category === 'knife'),
       image: resolveSkinImage({ weapon, skin, wear: W[w], stattrak: st, category }),
-      price,
-      priceSource: 'demo',
+      price: null,
+      priceSource: null,
     }))
   },
 }

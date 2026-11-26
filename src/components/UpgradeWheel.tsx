@@ -65,11 +65,11 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
 
         const from = angle.current
         // 6–8 оборотов по часовой + до target
-        const turns = 6 + Math.floor((roll % 10) / 3)
+        const turns = 7 + Math.floor((roll % 10) / 3)
         const to = from - (from % 360) + 360 * turns + target
 
         el.style.transition = 'none'
-        const dur = reduce() ? 800 : 4800
+        const dur = reduce() ? 900 : 7600
         const t0 = performance.now()
         // ease-out cubic
         const ease = (t: number) => 1 - Math.pow(1 - t, 3.4)
@@ -146,19 +146,19 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
             </feMerge>
           </filter>
           <filter id="arrowShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.55" />
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.18" />
           </filter>
         </defs>
 
         {/* outer dark ring */}
-        <circle cx={CX} cy={CY} r={RO + 10} fill="#0c0e0c" stroke="#1a1e1a" strokeWidth="2" />
-        <circle cx={CX} cy={CY} r={RO + 4} fill="none" stroke="#252a25" strokeWidth="1" />
+        <circle cx={CX} cy={CY} r={RO + 10} fill="#f9fcf9" stroke="#d8e2d8" strokeWidth="2" />
+        <circle cx={CX} cy={CY} r={RO + 4} fill="none" stroke="#dce6dc" strokeWidth="1" />
 
         {/* track background (fail zone) */}
-        <circle cx={CX} cy={CY} r={(RO + RI) / 2} fill="none" stroke="#1a1e1a" strokeWidth={RO - RI} />
+        <circle cx={CX} cy={CY} r={(RO + RI) / 2} fill="none" stroke="#e6ede6" strokeWidth={RO - RI} />
 
         {/* FAIL sector full ring then overlay win/clover */}
-        <path d={arcPath(0, 360, RO, RI)} fill="#151815" />
+        <path d={arcPath(0, 360, RO, RI)} fill="#e8eee8" />
 
         {/* WIN sector — зелёный */}
         {winDeg > 0.2 && (
@@ -187,7 +187,7 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke={inWin || inClover ? 'rgba(0,0,0,0.35)' : '#2a302a'}
+              stroke={inWin || inClover ? 'rgba(0,0,0,0.35)' : '#d2ddd2'}
               strokeWidth={deg % 30 === 0 ? 2 : 1}
               strokeLinecap="round"
             />
@@ -195,17 +195,17 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
         })}
 
         {/* inner hole */}
-        <circle cx={CX} cy={CY} r={RI - 4} fill="#0e100e" stroke="#1d221d" strokeWidth="2" />
-        <circle cx={CX} cy={CY} r={RI - 14} fill="#0a0c0a" stroke="#181c18" strokeWidth="1" />
+        <circle cx={CX} cy={CY} r={RI - 4} fill="#ffffff" stroke="#d7e2d7" strokeWidth="2" />
+        <circle cx={CX} cy={CY} r={RI - 14} fill="#f5faf5" stroke="#e0e9e0" strokeWidth="1" />
 
         {/* rim labels — без точных % */}
-        <text x={CX} y={CY - RO - 16} textAnchor="middle" fill="#5a655a" fontSize="11" fontWeight="600">
+        <text x={CX} y={CY - RO - 16} textAnchor="middle" fill="#6a786b" fontSize="11" fontWeight="600">
           WIN
         </text>
-        <text x={CX + RO + 14} y={CY + 4} textAnchor="start" fill="#5a655a" fontSize="11" fontWeight="600">
+        <text x={CX + RO + 14} y={CY + 4} textAnchor="start" fill="#6a786b" fontSize="11" fontWeight="600">
           ·
         </text>
-        <text x={CX} y={CY + RO + 28} textAnchor="middle" fill="#5a655a" fontSize="11" fontWeight="600">
+        <text x={CX} y={CY + RO + 28} textAnchor="middle" fill="#6a786b" fontSize="11" fontWeight="600">
           FAIL
         </text>
 

@@ -61,6 +61,7 @@ export default function App() {
   const [picker, setPicker] = useState<'source' | 'target' | null>(null)
   const [fx, setFx] = useState<{ source: Item; first: Item; final: Item; quick: boolean; done: () => void } | null>(null)
   const [itemsCache, setItemsCache] = useState<Record<string, Item>>({})
+  const refreshedInventory = useRef('')
   const wheelRef = useRef<WheelHandle>(null)
 
   const toast = useCallback((m: string) => {
@@ -121,11 +122,20 @@ export default function App() {
       .map((i) => {
         const item = itemsCache[i.itemId]
         if (!item) return null
-        const price = i.price && i.price > 0 ? i.price : item.price ?? 0
+        const price = item.price ?? 0
         return { item: { ...item, price }, uid: i.uid } as Entry
       })
       .filter(Boolean) as Entry[]
   }, [inv, itemsCache])
+
+  useEffect(() => {
+    if (!ready || inventoryEntries.length === 0) return
+    const key = inventoryEntries.map((e) => e.uid).join(',')
+    if (refreshedInventory.current === key) return
+    refreshedInventory.current = key
+    const items = inventoryEntries.slice(0, 20).map((e) => e.item)
+    catalog.refreshPrices(items).then(() => remember(items))
+  }, [ready, inventoryEntries, remember])
 
   const source = srcUid ? inventoryEntries.find((e) => e.uid === srcUid)?.item ?? null : null
   const target = tgtId ? itemsCache[tgtId] ?? null : null
@@ -154,7 +164,9 @@ export default function App() {
 
   const pickTarget = useCallback(async (q: Query) => {
     const list = await catalog.search(q)
-    remember(list.map((e) => e.item))
+    const items = list.slice(0, 20).map((e) => e.item)
+    await catalog.refreshPrices(items)
+    remember(items)
     return list
   }, [remember])
 
@@ -169,14 +181,14 @@ export default function App() {
 
   const sellItem = useCallback(async (u: string, price: number) => {
     setInv((prev) => prev.filter((i) => i.uid !== u))
-    await applyDelta(price)
+    await applyDelta(price * 100) // $1 market value = 100 virtual DP
   }, [applyDelta])
 
   const sellAll = useCallback(async () => {
     const total = inventoryEntries.reduce((s, e) => s + (e.item.price ?? 0), 0)
     if (total <= 0) return
     setInv([])
-    await applyDelta(total)
+    await applyDelta(total * 100) // $1 market value = 100 virtual DP
   }, [inventoryEntries, applyDelta])
 
   const applyPreset = async (kind: 'chance' | 'mult', value: number) => {

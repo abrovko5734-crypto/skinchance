@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { money } from '../lib/storage'
+import { moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Entry, Item } from '../services/types'
@@ -12,8 +12,7 @@ interface Props {
   onToast: (m: string) => void
 }
 
-/** Контракт: 10 предметов одной редкости → 1 предмет следующей редкости (упрощённо как CS trade-up) */
-const RARITY_ORDER = ['Consumer Grade', 'Industrial Grade', 'Mil-Spec', 'Restricted', 'Classified', 'Covert', 'Extraordinary']
+/** Контракт: от 3 до 10 любых скинов, редкость не ограничивает выбор. */
 
 export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: Props) {
   const [selected, setSelected] = useState<string[]>([]) // uids
@@ -25,9 +24,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
     [inventory, selected],
   )
 
-  const rarity = selectedEntries[0]?.item.rarity
-  const sameRarity = selectedEntries.every((e) => e.item.rarity === rarity)
-  const canContract = selected.length === 10 && sameRarity && rarity && RARITY_ORDER.indexOf(rarity) < RARITY_ORDER.length - 1
+  const canContract = selected.length >= 3 && selected.length <= 10 && selectedEntries.length === selected.length && selectedEntries.every((e) => (e.item.price ?? 0) > 0)
 
   const avgPrice = selectedEntries.reduce((s, e) => s + (e.item.price ?? 0), 0) / Math.max(1, selectedEntries.length)
 
@@ -42,20 +39,21 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
     sound.play('tick')
     await new Promise((r) => setTimeout(r, 800))
 
-    const nextRarity = RARITY_ORDER[RARITY_ORDER.indexOf(rarity!) + 1]
-    // Цель: предмет следующей редкости ближе к avg * 1.1
+    // Выходной скин выбирается из всего каталога по стоимости внесённых предметов.
     const targetPrice = avgPrice * 1.15
-    const candidates = (await catalog.search({ text: '', category: 'all', weapon: '', rarity: nextRarity, wear: '', special: 'all', min: null, max: null, sort: 'price-asc' })).filter(
-      (e) => (e.item.price ?? 0) > 0,
-    )
-    let best = candidates[0]?.item
+    const candidates = await catalog.search({ text: '', category: 'all', weapon: '', rarity: '', wear: '', special: 'all', min: null, max: null, sort: 'name' })
+    let best: Item | undefined
     let bestDiff = Infinity
-    for (const e of candidates) {
-      const d = Math.abs((e.item.price ?? 0) - targetPrice)
-      if (d < bestDiff) {
-        bestDiff = d
-        best = e.item
+    // Получаем настоящие котировки небольшими пакетами, не подменяя их оценочными значениями.
+    for (let i = 0; i < Math.min(candidates.length, 100); i += 20) {
+      const batch = candidates.slice(i, i + 20).map((e) => e.item)
+      await catalog.refreshPrices(batch)
+      for (const item of batch) {
+        if (item.price == null) continue
+        const diff = Math.abs(item.price - targetPrice)
+        if (diff < bestDiff) { bestDiff = diff; best = item }
       }
+      if (best && bestDiff <= targetPrice * 0.08) break
     }
     if (!best) {
       onToast('Не удалось найти предмет для контракта')
@@ -83,7 +81,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
     <div className="contracts-page">
       <div className="contracts-header">
         <h2>Контракты</h2>
-        <p>Выберите 10 предметов одной редкости. Получите 1 предмет следующей редкости.</p>
+        <p>Выберите от 3 до 10 любых скинов. Редкость и тип предметов могут отличаться.</p>
       </div>
 
       <div className="contract-panel">
@@ -109,12 +107,11 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
         <div className="contract-meta">
           <div>
             Выбрано: <b>{selected.length}/10</b>
-            {rarity && sameRarity && <span className="rarity-badge">{rarity}</span>}
-            {!sameRarity && selected.length > 1 && <span className="warn">Разные редкости</span>}
+            {selected.length > 0 && <span className="rarity-badge">Любые скины</span>}
           </div>
-          {selected.length > 0 && <div>Средняя цена: {money(avgPrice)}</div>}
+          {selected.length > 0 && <div>Средняя цена рынка: {moneyUsd(avgPrice)}</div>}
           <button className="btn go" disabled={!canContract || busy} onClick={doContract}>
-            {busy ? 'Контракт…' : 'Заключить контракт'}
+            {busy ? 'Контракт…' : `Создать контракт (${selected.length}/10)`}
           </button>
         </div>
       </div>
@@ -124,7 +121,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
           <h3>Результат</h3>
           <ItemImage item={result} size="lg" />
           <strong>{result.name}</strong>
-          <span>{money(result.price ?? 0)}</span>
+          <span>{moneyUsd(result.price)}</span>
           <button className="btn" onClick={() => setResult(null)}>
             OK
           </button>
@@ -144,7 +141,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
             <div className="inv-meta">
               <strong>{e.item.weapon}</strong>
               <span>{e.item.skin}</span>
-              <em>{money(e.item.price ?? 0)}</em>
+              <em>{moneyUsd(e.item.price)}</em>
             </div>
           </button>
         ))}

@@ -44,3 +44,9 @@ npm run dev
 - `GET /api/auth?a=me` — сессия + баланс
 - `POST /api/auth?a=credit` — админ: `{ steamId, amount }`
 - `POST /api/auth?a=delta` — игрок: `{ amount }` (кейсы / продажа)
+
+## Live CS2 market prices
+
+Skin quotes are requested through `POST /api/prices` from Steam Community Market's public `priceoverview` endpoint (`appid=730`, USD). The server proxy accepts up to 20 exact market hash names per request, limits concurrency, and caches results for two minutes. Missing/unlisted items remain unpriced (`—`); the app no longer fills them with generated demo prices. The Steam endpoint is undocumented and may throttle requests or change its response format, so a failed quote is shown as unavailable rather than guessed.
+
+The UI displays item market quotes in USD. The in-app wallet remains virtual DP; selling inventory credits `100 DP` per `$1` of the latest available quote. Case opening costs are game-configured DP prices and are not live marketplace prices. For production use with a stronger uptime guarantee, configure a licensed CS2 market data provider and replace the Steam proxy implementation in `api/prices.ts`.

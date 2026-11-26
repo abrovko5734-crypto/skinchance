@@ -31,7 +31,7 @@ export interface UpgradeApi {
 export const upgradeApi: UpgradeApi = {
   async perform(source, target) {
     // Clover appear roll happens once inside calcOdds (random)
-    let odds = calcOdds(source.price ?? 0, target.price ?? 0)
+    let odds = calcOdds(source.price ?? 0, target.price ?? 0, undefined, true)
     if (!odds.valid) throw new Error('Цена цели должна быть выше цены предмета')
 
     const steps: Step[] = []

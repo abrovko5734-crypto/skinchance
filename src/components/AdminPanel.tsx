@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { money } from '../lib/storage'
+import { moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Item } from '../services/types'
@@ -137,7 +137,7 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
               }}
             >
               <strong>{it.name}</strong>
-              <span>{money(it.price ?? 0)}</span>
+              <span>{moneyUsd(it.price)}</span>
             </button>
           ))}
         </div>

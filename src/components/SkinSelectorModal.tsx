@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { money } from '../lib/storage'
+import { moneyUsd } from '../lib/storage'
 import { catalog } from '../services/itemCatalog'
 import { EMPTY_QUERY, RARITIES, RARITY_COLOR, type Entry, type Query } from '../services/types'
 import { Icon, ItemImage, Modal, Tag } from './ui'
@@ -56,7 +56,7 @@ export function SkinSelectorModal({ mode, fetcher, selected, onPick, onClose }: 
                 style={{ ['--rc' as string]: RARITY_COLOR[e.item.rarity] }}>
                 <ItemImage item={e.item} size="sm" />
                 <small>{e.item.weapon}</small><b>{e.item.skin}</b>
-                <div className="cell-foot"><span>{e.item.price != null ? money(e.item.price) : '—'}</span>{e.item.wear && <Tag>{e.item.wear.split(/[ -]/).map(w => w[0]).join('')}</Tag>}</div>
+                <div className="cell-foot"><span>{e.item.price != null ? moneyUsd(e.item.price) : '—'}</span>{e.item.wear && <Tag>{e.item.wear.split(/[ -]/).map(w => w[0]).join('')}</Tag>}</div>
                 {dis && <em className="cell-dis">{e.disabledReason}</em>}{sel && <i className="cell-check"><Icon n="check" s={14} /></i>}
               </button>)
           })}</div>

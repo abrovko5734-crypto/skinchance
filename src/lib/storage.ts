@@ -30,3 +30,5 @@ export const moneyShort = (n: number) => {
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
   return n % 1 === 0 ? String(n) : n.toFixed(1)
 }
+
+export const moneyUsd = (n: number | null | undefined) => n == null || !Number.isFinite(n) ? 'Нет цены' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
