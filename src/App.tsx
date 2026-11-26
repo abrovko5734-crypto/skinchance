@@ -22,7 +22,7 @@ import { AdminPanel } from './components/AdminPanel'
 import { ProfilePage } from './components/ProfilePage'
 import { TopUpModal } from './components/TopUpModal'
 
-interface Inv { uid: string; itemId: string }
+interface Inv { uid: string; itemId: string; price?: number }
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 const SEED: HistoryRow[] = [
@@ -120,7 +120,9 @@ export default function App() {
     return inv
       .map((i) => {
         const item = itemsCache[i.itemId]
-        return item ? ({ item, uid: i.uid } as Entry) : null
+        if (!item) return null
+        const price = i.price && i.price > 0 ? i.price : item.price ?? 0
+        return { item: { ...item, price }, uid: i.uid } as Entry
       })
       .filter(Boolean) as Entry[]
   }, [inv, itemsCache])
@@ -156,9 +158,10 @@ export default function App() {
     return list
   }, [remember])
 
-  const addItem = useCallback((itemId: string) => {
-    setInv((prev) => [...prev, { uid: uid(), itemId }])
-  }, [])
+  const addItem = useCallback((itemId: string, price?: number, item?: Item) => {
+    setInv((prev) => [...prev, { uid: uid(), itemId, price }])
+    if (item) remember([item])
+  }, [remember])
 
   const removeItems = useCallback((uids: string[]) => {
     setInv((prev) => prev.filter((i) => !uids.includes(i.uid)))

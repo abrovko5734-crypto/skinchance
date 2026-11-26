@@ -9,7 +9,7 @@ import { ItemImage, Icon } from './ui'
 interface Props {
   balance: number
   onSpend: (amount: number) => Promise<boolean>
-  onAddItem: (itemId: string) => void
+  onAddItem: (itemId: string, price?: number, item?: Item) => void
   onToast: (m: string) => void
 }
 
@@ -36,9 +36,26 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
     }
     await new Promise((r) => setTimeout(r, 1100))
     const drop = openCase(c)
-    const item = await catalog.byId(drop.itemId)
+    const found = await catalog.byId(drop.itemId)
+    const item: Item | null = found
+      ? { ...found, price: drop.price, priceSource: found.priceSource ?? 'demo' }
+      : {
+          id: drop.itemId,
+          name: drop.itemId.replace(/\|/g, ' | ').replace(/-/g, ' '),
+          weapon: drop.itemId.split('|')[0] ?? '',
+          skin: drop.itemId.split('|')[1] ?? '',
+          category: 'weapon',
+          rarity: 'Covert',
+          wear: 'Factory New',
+          stattrak: false,
+          souvenir: false,
+          collection: '',
+          image: null,
+          price: drop.price,
+          priceSource: 'demo',
+        }
     setResult({ drop, item })
-    if (item) onAddItem(item.id)
+    onAddItem(item.id, drop.price, item)
     sound.play(drop.price > c.price * 2.5 ? 'win' : 'select')
     setOpening(false)
   }
@@ -117,7 +134,6 @@ export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
                     .sort((a, b) => b.price - a.price)
                     .map((d) => (
                       <div key={d.itemId} className="drop-row">
-                        <span className="drop-chance">{d.chance}%</span>
                         <span className="drop-id">{d.itemId.replace(/\|/g, ' | ').replace(/-/g, ' ')}</span>
                         <span className="drop-price">{moneyShort(d.price)} DP</span>
                       </div>
