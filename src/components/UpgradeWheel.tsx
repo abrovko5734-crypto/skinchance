@@ -150,6 +150,11 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
           </filter>
         </defs>
 
+        {/* rotating accent ring */}
+        <g className="wheel-ring">
+          <circle cx={CX} cy={CY} r={RO + 15} fill="none" stroke="rgba(57,255,128,.4)" strokeWidth="2.5" strokeDasharray="2 14" strokeLinecap="round" />
+        </g>
+
         {/* outer dark ring */}
         <circle cx={CX} cy={CY} r={RO + 10} fill="#0d1410" stroke="rgba(65,255,130,.14)" strokeWidth="2" />
         <circle cx={CX} cy={CY} r={RO + 4} fill="none" stroke="rgba(65,255,130,.08)" strokeWidth="1" />

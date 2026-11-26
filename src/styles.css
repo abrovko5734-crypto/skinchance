@@ -591,3 +591,49 @@ main{max-width:1240px;margin:0 auto;padding:30px 22px 70px}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .case-box,.case-visual:after,.hero-case,.hero-spark{animation:none!important}
 }
+
+/* ============ CONFETTI ============ */
+.confetti{position:fixed;inset:0;z-index:200;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;left:50%;top:42%;width:var(--s);height:calc(var(--s)*.62);border-radius:2px;background:var(--c);
+  box-shadow:0 0 8px var(--c);opacity:0;animation:confettiFly 1.5s var(--d) cubic-bezier(.15,.6,.3,1) forwards}
+@keyframes confettiFly{
+  0%{opacity:1;transform:translate(-50%,-50%) rotate(0) scale(1)}
+  70%{opacity:1}
+  100%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) rotate(var(--r)) scale(.6)}}
+
+/* ============ REVEAL ON MOUNT ============ */
+.home-section,.cases-grid,.cases-hero,.home-hero,.contract-panel,.inv-grid,.profile-card,.admin-section,.history{animation:fadeUp .55s cubic-bezier(.2,.7,.3,1) both}
+.cases-grid .case-card{animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
+.cases-grid .case-card:nth-child(2){animation-delay:.05s}
+.cases-grid .case-card:nth-child(3){animation-delay:.1s}
+.cases-grid .case-card:nth-child(4){animation-delay:.15s}
+.cases-grid .case-card:nth-child(5){animation-delay:.2s}
+.cases-grid .case-card:nth-child(6){animation-delay:.25s}
+.cases-grid .case-card:nth-child(7){animation-delay:.3s}
+.cases-grid .case-card:nth-child(8){animation-delay:.35s}
+.cases-grid .case-card:nth-child(n+9){animation-delay:.4s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* ============ WHEEL SHINE ============ */
+.wheel.caser-style svg{position:relative}
+.wheel-col{position:relative}
+.wheel-col:before{content:"";position:absolute;inset:-30px;border-radius:50%;
+  background:radial-gradient(circle,rgba(39,230,107,.12),transparent 65%);z-index:-1;animation:hubGlow 3s ease-in-out infinite}
+@keyframes hubGlow{50%{opacity:.5;transform:scale(1.06)}}
+
+/* ============ RESULT POP ============ */
+.result .img,.rr-img{animation:resultPop .45s cubic-bezier(.2,1.4,.3,1) both}
+@keyframes resultPop{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:none}}
+.rl-card.rl-win .img img{animation:winPulse 1s ease-in-out infinite}
+
+/* ============ NAV GLOW ============ */
+.logo img{transition:filter .3s}
+.logo:hover img{filter:drop-shadow(0 0 22px rgba(57,255,128,.65))}
+.nav nav button.active,.nav nav a.active{position:relative}
+.nav nav button.active:after,.nav nav a.active:after{content:"";position:absolute;left:20%;right:20%;bottom:2px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--g2),transparent);animation:navShine 2.4s linear infinite}
+@keyframes navShine{from{transform:translateX(-60%)}to{transform:translateX(60%)}}
+.wheel-ring{transform-origin:200px 200px;animation:wheelSpin 16s linear infinite}
+@keyframes wheelSpin{to{transform:rotate(360deg)}}
+.wheel.caser-style.landed-win .wheel-ring circle{stroke:rgba(228,174,57,.7)}
+.wheel.caser-style.landed-clover .wheel-ring circle{stroke:rgba(57,255,128,.8)}

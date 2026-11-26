@@ -1,6 +1,7 @@
 import { moneyUsd } from '../lib/storage'
 import type { UpgradeResult } from '../services/upgradeService'
 import { Clover, Icon, ItemImage, Modal } from './ui'
+import { Confetti } from './Confetti'
 
 interface Props { res: UpgradeResult; onClose: () => void; onRepeat: () => void; onNew: () => void }
 export function UpgradeResultModal({ res, onClose, onRepeat, onNew }: Props) {
@@ -8,6 +9,7 @@ export function UpgradeResultModal({ res, onClose, onRepeat, onNew }: Props) {
   const fail = outcome === 'fail', clover = outcome === 'clover'
   return (
     <Modal title={fail ? 'Апгрейд не удался' : clover ? 'Clover x2' : 'Апгрейд успешен'} onClose={onClose}>
+      {!fail && <Confetti />}
       <div className={`result r-${outcome}`}>
         <div className="r-badge">{clover ? <Clover size={34} /> : fail ? <Icon n="x" s={24} /> : <Icon n="check" s={24} />}</div>
         {final ? (<>

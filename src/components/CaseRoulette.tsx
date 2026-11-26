@@ -4,6 +4,7 @@ import { money, moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { rarityColor, rarityRu, type Item } from '../services/types'
 import { ItemImage, Icon } from './ui'
+import { Confetti } from './Confetti'
 
 /**
  * Горизонтальная рулетка открытия кейса.
@@ -151,6 +152,7 @@ export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
 
         {phase === 'done' && won && (
           <div className="roulette-result">
+            {(won.price ?? 0) > gameCase.price * 2 && <Confetti count={36} />}
             <div className="rr-item">
               <div className="rr-img">
                 <ItemImage item={won} size="lg" />
