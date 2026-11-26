@@ -1,5 +1,7 @@
-// Единая serverless-функция Vercel: /api/auth?a=login|callback|logout|me
-// Вход через Steam OpenID. Баланс хранится в Redis (Upstash / Vercel KV) и привязан к SteamID. Новый игрок = 0.
+// Единая serverless-функция Vercel: /api/auth?a=login|callback|logout|me|credit|delta
+// Вход через Steam OpenID. Баланс в Redis (Upstash). Новый игрок = 0.
+// credit — только админ (VITE_ADMIN_STEAM_IDS), выдаёт DP любому SteamID.
+// delta — изменение баланса текущего пользователя (продажа / кейсы).
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 const COOKIE = 'sc_session'
@@ -11,40 +13,71 @@ const REDIS_TOKEN = () => process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV
 type Session = { id: string; name: string; avatar: string; exp: number }
 
 const json = (data: unknown, status = 200, headers: Record<string, string> = {}) =>
-  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } })
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers },
+  })
 
 async function redis(...cmd: (string | number)[]): Promise<unknown> {
-  const r = await fetch(REDIS_URL(), { method: 'POST', headers: { authorization: `Bearer ${REDIS_TOKEN()}`, 'content-type': 'application/json' }, body: JSON.stringify(cmd) })
+  const r = await fetch(REDIS_URL(), {
+    method: 'POST',
+    headers: { authorization: `Bearer ${REDIS_TOKEN()}`, 'content-type': 'application/json' },
+    body: JSON.stringify(cmd),
+  })
   const j = (await r.json()) as { result?: unknown; error?: string }
   if (!r.ok || j.error) throw new Error(j.error || 'redis error')
   return j.result
 }
 
 const sign = (payload: string) => createHmac('sha256', SECRET()).update(payload).digest('base64url')
+
 function makeCookie(s: Session) {
   const p = Buffer.from(JSON.stringify(s)).toString('base64url')
   return `${COOKIE}=${p}.${sign(p)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`
 }
 const clearCookie = `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`
+
 function readSession(req: Request): Session | null {
-  const raw = (req.headers.get('cookie') || '').split(/;\s*/).find(c => c.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1)
+  const raw = (req.headers.get('cookie') || '')
+    .split(/;\s*/)
+    .find((c) => c.startsWith(COOKIE + '='))
+    ?.slice(COOKIE.length + 1)
   if (!raw) return null
   const [p, sig] = raw.split('.')
   if (!p || !sig) return null
-  const a = Buffer.from(sig), b = Buffer.from(sign(p))
+  const a = Buffer.from(sig)
+  const b = Buffer.from(sign(p))
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
   try {
     const s = JSON.parse(Buffer.from(p, 'base64url').toString()) as Session
     return s.exp > Date.now() / 1000 && /^\d{17}$/.test(s.id) ? s : null
-  } catch { return null }
+  } catch {
+    return null
+  }
+}
+
+function getAdminIds(): string[] {
+  const raw = process.env.VITE_ADMIN_STEAM_IDS || process.env.ADMIN_STEAM_IDS || ''
+  return raw
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function isAdmin(id: string): boolean {
+  const ids = getAdminIds()
+  return ids.length > 0 && ids.includes(String(id))
 }
 
 async function steamProfile(id: string) {
   try {
     const x = await (await fetch(`https://steamcommunity.com/profiles/${id}?xml=1`)).text()
-    const pick = (tag: string) => x.match(new RegExp(`<${tag}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${tag}>`))?.[1]?.trim() || ''
+    const pick = (tag: string) =>
+      x.match(new RegExp(`<${tag}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${tag}>`))?.[1]?.trim() || ''
     return { name: pick('steamID').slice(0, 40) || 'Player', avatar: pick('avatarFull') }
-  } catch { return { name: 'Player', avatar: '' } }
+  } catch {
+    return { name: 'Player', avatar: '' }
+  }
 }
 
 export async function GET(req: Request) {
@@ -56,9 +89,12 @@ export async function GET(req: Request) {
 
   if (a === 'login') {
     const p = new URLSearchParams({
-      'openid.ns': 'http://specs.openid.net/auth/2.0', 'openid.mode': 'checkid_setup',
-      'openid.return_to': `${origin}/api/auth?a=callback`, 'openid.realm': origin,
-      'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select', 'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
+      'openid.ns': 'http://specs.openid.net/auth/2.0',
+      'openid.mode': 'checkid_setup',
+      'openid.return_to': `${origin}/api/auth?a=callback`,
+      'openid.realm': origin,
+      'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
+      'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
     })
     return Response.redirect(`https://steamcommunity.com/openid/login?${p}`, 302)
   }
@@ -66,24 +102,40 @@ export async function GET(req: Request) {
   if (a === 'callback') {
     const fail = (c: string) => Response.redirect(`${origin}/?auth_error=${c}`, 302)
     const sp = url.searchParams
-    if (sp.get('openid.mode') !== 'id_res' || sp.get('openid.return_to') !== `${origin}/api/auth?a=callback`) return fail('invalid')
+    if (sp.get('openid.mode') !== 'id_res' || sp.get('openid.return_to') !== `${origin}/api/auth?a=callback`)
+      return fail('invalid')
     const id = sp.get('openid.claimed_id')?.match(/^https:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/)?.[1]
     if (!id) return fail('invalid')
     const check = new URLSearchParams()
-    sp.forEach((v, k) => { if (k.startsWith('openid.')) check.set(k, v) })
+    sp.forEach((v, k) => {
+      if (k.startsWith('openid.')) check.set(k, v)
+    })
     check.set('openid.mode', 'check_authentication')
-    const v = await fetch('https://steamcommunity.com/openid/login', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: check })
+    const v = await fetch('https://steamcommunity.com/openid/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: check,
+    })
     if (!/is_valid\s*:\s*true/.test(await v.text())) return fail('invalid')
-    try { // защита от повторного использования ответа Steam
+    try {
       const nonce = sp.get('openid.response_nonce')
       if (nonce && (await redis('SET', 'nonce:' + nonce, '1', 'NX', 'EX', 600)) === null) return fail('replay')
-      await redis('SETNX', `bal:${id}`, '0') // новый игрок — баланс 0
-    } catch { return fail('db') }
+      await redis('SETNX', `bal:${id}`, '0')
+    } catch {
+      return fail('db')
+    }
     const prof = await steamProfile(id)
-    return new Response(null, { status: 302, headers: { location: '/', 'set-cookie': makeCookie({ id, ...prof, exp: Math.floor(Date.now() / 1000) + MAX_AGE }) } })
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: '/',
+        'set-cookie': makeCookie({ id, ...prof, exp: Math.floor(Date.now() / 1000) + MAX_AGE }),
+      },
+    })
   }
 
-  if (a === 'logout') return new Response(null, { status: 302, headers: { location: '/', 'set-cookie': clearCookie } })
+  if (a === 'logout')
+    return new Response(null, { status: 302, headers: { location: '/', 'set-cookie': clearCookie } })
 
   if (a === 'me') {
     const s = readSession(req)
@@ -92,8 +144,72 @@ export async function GET(req: Request) {
     try {
       await redis('SETNX', `bal:${s.id}`, '0')
       const bal = Number(await redis('GET', `bal:${s.id}`)) || 0
-      return json({ user: { id: s.id, name: s.name, avatar: s.avatar }, balance: bal })
-    } catch { return json({ error: 'db', message: 'База недоступна' }, 502) }
+      return json({ user: { id: s.id, name: s.name, avatar: s.avatar }, balance: bal, admin: isAdmin(s.id) })
+    } catch {
+      return json({ error: 'db', message: 'База недоступна' }, 502)
+    }
   }
+
+  return json({ error: 'bad_request' }, 400)
+}
+
+export async function POST(req: Request) {
+  const url = new URL(req.url)
+  const a = url.searchParams.get('a')
+
+  if (!SECRET()) return json({ error: 'config', message: 'Не задан SESSION_SECRET' }, 500)
+  if (!REDIS_URL() || !REDIS_TOKEN()) return json({ error: 'config', message: 'Не подключена база Redis' }, 500)
+
+  const s = readSession(req)
+  if (!s) return json({ error: 'auth', message: 'Нужен вход' }, 401)
+
+  let body: Record<string, unknown> = {}
+  try {
+    body = (await req.json()) as Record<string, unknown>
+  } catch {
+    /* empty */
+  }
+
+  // Админ выдаёт DP любому SteamID (деньги только от админа)
+  if (a === 'credit') {
+    if (!isAdmin(s.id)) return json({ error: 'forbidden', message: 'Только админ' }, 403)
+    const targetId = String(body.steamId || '').trim()
+    const amount = Number(body.amount)
+    if (!/^\d{17}$/.test(targetId)) return json({ error: 'bad_request', message: 'Неверный Steam ID (17 цифр)' }, 400)
+    if (!Number.isFinite(amount) || amount === 0) return json({ error: 'bad_request', message: 'Сумма' }, 400)
+    try {
+      await redis('SETNX', `bal:${targetId}`, '0')
+      const next = Number(await redis('INCRBYFLOAT', `bal:${targetId}`, amount))
+      if (next < 0) {
+        await redis('SET', `bal:${targetId}`, '0')
+        return json({ balance: 0, targetId })
+      }
+      return json({ balance: next, targetId, amount })
+    } catch (e: any) {
+      return json({ error: 'db', message: e?.message || 'База недоступна' }, 502)
+    }
+  }
+
+  // Изменение баланса текущего игрока (кейсы / продажа)
+  if (a === 'delta') {
+    const amount = Number(body.amount)
+    if (!Number.isFinite(amount) || amount === 0) return json({ error: 'bad_request', message: 'Сумма' }, 400)
+    try {
+      await redis('SETNX', `bal:${s.id}`, '0')
+      const cur = Number(await redis('GET', `bal:${s.id}`)) || 0
+      if (amount < 0 && cur + amount < -0.001) {
+        return json({ error: 'funds', message: 'Недостаточно DP', balance: cur }, 402)
+      }
+      const next = Number(await redis('INCRBYFLOAT', `bal:${s.id}`, amount))
+      if (next < 0) {
+        await redis('SET', `bal:${s.id}`, '0')
+        return json({ balance: 0 })
+      }
+      return json({ balance: next })
+    } catch (e: any) {
+      return json({ error: 'db', message: e?.message || 'База недоступна' }, 502)
+    }
+  }
+
   return json({ error: 'bad_request' }, 400)
 }

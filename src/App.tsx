@@ -13,7 +13,7 @@ import { CloverX2Animation } from './components/CloverX2Animation'
 import { UpgradeResultModal } from './components/UpgradeResultModal'
 import { UpgradeHistory, type HistoryRow } from './components/UpgradeHistory'
 import { Clover } from './components/ui'
-import { fetchMe, type AuthState, type User, isAdminUser } from './lib/auth'
+import { fetchMe, deltaBalance, type AuthState, type User, isAdminUser } from './lib/auth'
 import { LoginScreen } from './components/LoginScreen'
 import { CasesPage } from './components/CasesPage'
 import { ContractsPage } from './components/ContractsPage'
@@ -71,17 +71,29 @@ export default function App() {
 
   useEffect(() => {
     if (auth.status !== 'in') return
-    setBalance(load(`bal.${userKey}`, 0))
+    // Баланс только с сервера (Redis) — не из localStorage
+    setBalance(auth.balance ?? 0)
     setInv(load<Inv[]>(`inv.${userKey}`, []))
     setHistory(load<HistoryRow[]>(`hist.${userKey}`, SEED))
     setReady(true)
     catalog.load()
   }, [auth, userKey])
 
-  useEffect(() => { if (ready) save(`bal.${userKey}`, balance) }, [balance, userKey, ready])
   useEffect(() => { if (ready) save(`inv.${userKey}`, inv) }, [inv, userKey, ready])
   useEffect(() => { if (ready) save(`hist.${userKey}`, history.slice(0, 50)) }, [history, userKey, ready])
   useEffect(() => { sound.enabled = soundOn }, [soundOn])
+
+  /** Синхронизация баланса с сервером */
+  const applyDelta = useCallback(async (amount: number): Promise<boolean> => {
+    const res = await deltaBalance(amount)
+    if (!res.ok) {
+      toast(res.message || 'Недостаточно DP')
+      if (typeof res.balance === 'number') setBalance(res.balance)
+      return false
+    }
+    setBalance(res.balance)
+    return true
+  }, [toast])
 
   const remember = useCallback((list: Item[]) => {
     setItemsCache((c) => {
@@ -152,16 +164,17 @@ export default function App() {
     setInv((prev) => prev.filter((i) => !uids.includes(i.uid)))
   }, [])
 
-  const sellItem = useCallback((u: string, price: number) => {
+  const sellItem = useCallback(async (u: string, price: number) => {
     setInv((prev) => prev.filter((i) => i.uid !== u))
-    setBalance((b) => b + price)
-  }, [])
+    await applyDelta(price)
+  }, [applyDelta])
 
-  const sellAll = useCallback(() => {
+  const sellAll = useCallback(async () => {
     const total = inventoryEntries.reduce((s, e) => s + (e.item.price ?? 0), 0)
+    if (total <= 0) return
     setInv([])
-    setBalance((b) => b + total)
-  }, [inventoryEntries])
+    await applyDelta(total)
+  }, [inventoryEntries, applyDelta])
 
   const applyPreset = async (kind: 'chance' | 'mult', value: number) => {
     if (!source) {
@@ -265,7 +278,7 @@ export default function App() {
 
       <main className="main">
         {tab === 'cases' && (
-          <CasesPage balance={balance} onBalance={setBalance} onAddItem={addItem} onToast={toast} />
+          <CasesPage balance={balance} onSpend={applyDelta} onAddItem={addItem} onToast={toast} />
         )}
         {tab === 'contracts' && (
           <ContractsPage inventory={inventoryEntries} onRemoveItems={removeItems} onAddItem={addItem} onToast={toast} />
@@ -292,43 +305,27 @@ export default function App() {
               <div className="wheel-col">
                 <UpgradeWheel ref={wheelRef} odds={shownOdds} landed={landed} spinning={phase === 'spinning'} />
                 <div className="presets">
-                  <button className="preset" disabled={!source || busy} onClick={() => applyPreset('chance', 75)}>75%</button>
-                  <button className="preset" disabled={!source || busy} onClick={() => applyPreset('chance', 50)}>50%</button>
-                  <button className="preset" disabled={!source || busy} onClick={() => applyPreset('chance', 30)}>30%</button>
+                  <button className="preset" disabled={!source || busy} onClick={() => applyPreset('chance', 80)}>Лёгкий</button>
+                  <button className="preset" disabled={!source || busy} onClick={() => applyPreset('chance', 55)}>Средний</button>
+                  <button className="preset" disabled={!source || busy} onClick={() => applyPreset('chance', 35)}>Риск</button>
                   <button className="preset" disabled={!source || busy} onClick={() => applyPreset('mult', 5)}>5×</button>
                   <button className="preset" disabled={!source || busy} onClick={() => applyPreset('mult', 10)}>10×</button>
                 </div>
                 <button className="btn go" disabled={!canGo} onClick={go}>
                   {phase === 'spinning' ? 'Вращение…' : 'Апгрейд'}
                 </button>
-                <div className="odds" aria-live="polite">
-                  <div>
-                    <span>Шанс</span>
-                    <b>{shownOdds.valid ? shownOdds.winChance.toFixed(2) + '%' : '—'}</b>
-                  </div>
+                <div className="odds odds-clean" aria-live="polite">
                   <div className="o-clover">
                     <span><Clover size={13} /> Clover</span>
-                    <b>
-                      {shownOdds.cloverActive
-                        ? shownOdds.cloverChance.toFixed(0) + '%'
-                        : shownOdds.valid && shownOdds.winChance < 5
-                          ? 'нет (<5%)'
-                          : shownOdds.valid
-                            ? '~30% шанс'
-                            : '—'}
-                    </b>
+                    <b>{shownOdds.cloverActive ? 'активен ×2' : shownOdds.valid ? 'может выпасть' : '—'}</b>
                   </div>
                   <div>
-                    <span>Множитель</span>
-                    <b>×{shownOdds.cloverMultiplier}</b>
-                  </div>
-                  <div>
-                    <span>На успех</span>
-                    <b>{shownOdds.valid ? shownOdds.totalWin.toFixed(2) + '%' : '—'}</b>
+                    <span>Зона</span>
+                    <b className={shownOdds.valid ? 'zone-ok' : ''}>{shownOdds.valid ? 'зелёная' : '—'}</b>
                   </div>
                 </div>
                 <p className="math">
-                  Clover: 30% шанс появиться, сектор 5%. Недоступен при шансе ниже 5%. Мин. шанс 0.01%. Комиссия 8%.
+                  Зелёная зона — победа. Clover даёт ×2. Шансы скрыты — играй на удачу.
                 </p>
               </div>
               <TargetSkinCard

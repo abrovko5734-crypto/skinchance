@@ -1,20 +1,20 @@
-// Чистая математика шансов апгрейда
+// Чистая математика шансов апгрейда — повышенные шансы, house edge снижен
 export interface OddsConfig {
-  cloverSector: number      // размер сектора Clover когда он активен (5%)
-  cloverAppearChance: number // вероятность что Clover вообще появится на колесе (30%)
+  cloverSector: number // размер сектора Clover когда он активен
+  cloverAppearChance: number // вероятность что Clover появится на колесе
   cloverMultiplier: number
-  minChance: number         // 0.01
+  minChance: number
   maxChance: number
   edge: number
 }
 
 export const DEFAULT_ODDS: OddsConfig = {
-  cloverSector: 5,
-  cloverAppearChance: 30,
+  cloverSector: 8,
+  cloverAppearChance: 45,
   cloverMultiplier: 2,
-  minChance: 0.01,
-  maxChance: 90,
-  edge: 0.08, // 8% house edge — шансы ниже
+  minChance: 0.5,
+  maxChance: 95,
+  edge: 0.02, // 2% house edge — шансы выше
 }
 
 export type Outcome = 'win' | 'clover' | 'fail'
@@ -32,29 +32,33 @@ export interface Odds {
   chainLevel?: number
 }
 
-const r2 = (n: number) => Math.round(n * 10000) / 10000 // точность до 0.01
+const r2 = (n: number) => Math.round(n * 10000) / 10000
 const clamp = (n: number, a: number, b: number) => Math.min(b, Math.max(a, n))
 
 /**
  * Основной расчёт.
- * Clover появляется только с вероятностью cloverAppearChance (30%).
- * Если winChance < 5% — Clover запрещён.
- * Когда Clover активен — сектор 5%.
+ * Clover появляется с вероятностью cloverAppearChance.
+ * Если winChance < 3% — Clover запрещён.
  */
 export function calcOdds(source: number, target: number, c: OddsConfig = DEFAULT_ODDS, forceClover?: boolean): Odds {
   const valid = source > 0 && target > source
   if (!valid) {
     return {
-      valid: false, winChance: 0, cloverChance: 0, failChance: 100,
-      totalWin: 0, cloverMultiplier: c.cloverMultiplier, cloverCeiling: 0,
-      expectedReturn: 0, cloverActive: false,
+      valid: false,
+      winChance: 0,
+      cloverChance: 0,
+      failChance: 100,
+      totalWin: 0,
+      cloverMultiplier: c.cloverMultiplier,
+      cloverCeiling: 0,
+      expectedReturn: 0,
+      cloverActive: false,
     }
   }
 
   let win = r2(clamp((source / target) * 100 * (1 - c.edge), c.minChance, c.maxChance))
 
-  // Clover только если win >= 5% и выпал «появиться»
-  const canHaveClover = win >= 5
+  const canHaveClover = win >= 3
   const cloverActive = canHaveClover && (forceClover ?? Math.random() * 100 < c.cloverAppearChance)
   const clover = cloverActive ? Math.min(c.cloverSector, r2(100 - win - 0.01)) : 0
 
@@ -72,11 +76,11 @@ export function calcOdds(source: number, target: number, c: OddsConfig = DEFAULT
   }
 }
 
-/** Цепочка после Clover: шанс падает, Clover редко */
+/** Цепочка после Clover */
 export function calcChainOdds(level: number, stake: number, target: number): Odds {
-  const chainWin = [45, 32, 22, 15, 10, 7, 4, 2.5, 1.5, 1, 0.5, 0.2]
+  const chainWin = [55, 42, 32, 24, 18, 12, 8, 5, 3, 2, 1, 0.5]
   const winChance = chainWin[Math.min(level, chainWin.length - 1)]
-  const cloverChance = winChance >= 5 ? Math.max(1, 4 - level) : 0
+  const cloverChance = winChance >= 3 ? Math.max(2, 6 - level) : 0
   const failChance = r2(100 - winChance - cloverChance)
   return {
     valid: true,
@@ -111,9 +115,7 @@ export function secureRoll(): number {
   return (a[0] / 2 ** 32) * 100
 }
 
-/** Быстрый пресет: target = source * mult или chance% */
 export function targetForChance(source: number, chancePct: number, edge = DEFAULT_ODDS.edge): number {
-  // win = (source/target)*100*(1-edge) => target = source*100*(1-edge)/chance
   return r2((source * 100 * (1 - edge)) / Math.max(chancePct, 0.01))
 }
 

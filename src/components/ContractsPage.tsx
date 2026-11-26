@@ -62,8 +62,8 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
       setBusy(false)
       return
     }
-    // 70% шанс успеха (упрощённо)
-    const success = Math.random() < 0.72
+    // Повышенный шанс успеха
+    const success = Math.random() < 0.85
     onRemoveItems(selected)
     setSelected([])
     if (success) {
@@ -83,7 +83,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
     <div className="contracts-page">
       <div className="contracts-header">
         <h2>Контракты</h2>
-        <p>Выберите 10 предметов одной редкости. Получите 1 предмет следующей редкости (~72% шанс).</p>
+        <p>Выберите 10 предметов одной редкости. Получите 1 предмет следующей редкости.</p>
       </div>
 
       <div className="contract-panel">

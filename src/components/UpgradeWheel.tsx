@@ -127,7 +127,7 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
 
   return (
     <div className={`wheel caser-style ${landed ? 'landed-' + landed : ''} ${spinning ? 'is-spinning' : ''}`}>
-      <svg viewBox="0 0 400 400" role="img" aria-label={`Шанс ${odds.winChance}%`}>
+      <svg viewBox="0 0 400 400" role="img" aria-label="Колесо апгрейда">
         <defs>
           <linearGradient id="winGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#b8ff6a" />
@@ -198,15 +198,15 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
         <circle cx={CX} cy={CY} r={RI - 4} fill="#0e100e" stroke="#1d221d" strokeWidth="2" />
         <circle cx={CX} cy={CY} r={RI - 14} fill="#0a0c0a" stroke="#181c18" strokeWidth="1" />
 
-        {/* labels 0 50 100 on rim */}
-        <text x={CX} y={CY - RO - 16} textAnchor="middle" fill="#6a726a" fontSize="11" fontWeight="600">
-          0%
+        {/* rim labels — без точных % */}
+        <text x={CX} y={CY - RO - 16} textAnchor="middle" fill="#5a655a" fontSize="11" fontWeight="600">
+          WIN
         </text>
-        <text x={CX + RO + 18} y={CY + 4} textAnchor="start" fill="#6a726a" fontSize="11" fontWeight="600">
-          50%
+        <text x={CX + RO + 14} y={CY + 4} textAnchor="start" fill="#5a655a" fontSize="11" fontWeight="600">
+          ·
         </text>
-        <text x={CX} y={CY + RO + 28} textAnchor="middle" fill="#6a726a" fontSize="11" fontWeight="600">
-          100%
+        <text x={CX} y={CY + RO + 28} textAnchor="middle" fill="#5a655a" fontSize="11" fontWeight="600">
+          FAIL
         </text>
 
         {/* === КРУТЯЩАЯСЯ СТРЕЛКА (без тонкой полоски, крупный зелёный наконечник) === */}
@@ -238,11 +238,10 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
         </g>
       </svg>
 
-      {/* хаб с процентом — поверх SVG */}
+      {/* хаб — без чисел шансов */}
       <div className="wheel-hub caser-hub">
-        <strong className={landed === 'win' ? 'hub-win' : landed === 'clover' ? 'hub-clover' : ''}>
-          {odds.valid ? odds.winChance.toFixed(2) : '—'}
-          <em>%</em>
+        <strong className={landed === 'win' ? 'hub-win' : landed === 'clover' ? 'hub-clover' : landed === 'fail' ? 'hub-fail' : ''}>
+          {landed === 'win' ? 'WIN' : landed === 'clover' ? '×2' : landed === 'fail' ? 'FAIL' : spinning ? '···' : 'GO'}
         </strong>
         <span>
           {landed === 'win'
@@ -253,7 +252,9 @@ export const UpgradeWheel = forwardRef<WheelHandle, Props>(({ odds, landed, spin
                 ? 'Промах'
                 : spinning
                   ? 'Крутим…'
-                  : 'средний шанс'}
+                  : odds.valid
+                    ? 'Удача'
+                    : 'Выбери скины'}
         </span>
       </div>
     </div>

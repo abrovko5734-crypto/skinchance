@@ -4,7 +4,7 @@ import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Item } from '../services/types'
 import type { User } from '../lib/auth'
-import { isAdminUser } from '../lib/auth'
+import { isAdminUser, adminCredit } from '../lib/auth'
 
 interface Props {
   user: User
@@ -15,9 +15,11 @@ interface Props {
 }
 
 export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Props) {
+  const [steamId, setSteamId] = useState('')
   const [amount, setAmount] = useState('1000')
   const [itemQuery, setItemQuery] = useState('')
   const [found, setFound] = useState<Item[]>([])
+  const [busy, setBusy] = useState(false)
 
   if (!isAdminUser(user)) {
     return (
@@ -44,6 +46,28 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
     setFound(list.slice(0, 16).map((e) => e.item))
   }
 
+  const credit = async (targetId: string, n: number) => {
+    if (busy) return
+    if (!/^\d{17}$/.test(targetId.trim())) {
+      onToast('Укажите корректный SteamID64 (17 цифр)')
+      return
+    }
+    if (!Number.isFinite(n) || n === 0) {
+      onToast('Укажите сумму')
+      return
+    }
+    setBusy(true)
+    const res = await adminCredit(targetId.trim(), n)
+    setBusy(false)
+    if (!res.ok) {
+      onToast(res.message)
+      return
+    }
+    sound.play('win')
+    onToast(`${n > 0 ? '+' : ''}${money(n)} → ${targetId.slice(-6)} · баланс ${money(res.balance)}`)
+    if (targetId.trim() === user.id) onBalance(res.balance)
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-header">
@@ -52,28 +76,49 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
       </div>
 
       <section className="admin-section">
-        <h3>Баланс (себе)</h3>
-        <p>Текущий: <b>{money(balance)}</b></p>
+        <h3>Выдать DP игроку</h3>
+        <p className="hint">Баланс хранится на сервере. Игроки получают DP только через эту выдачу.</p>
         <div className="admin-row">
-          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Сумма DP" />
+          <input
+            value={steamId}
+            onChange={(e) => setSteamId(e.target.value.replace(/\D/g, '').slice(0, 17))}
+            placeholder="SteamID64 (17 цифр)"
+            inputMode="numeric"
+          />
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Сумма DP"
+          />
           <button
             className="btn go"
-            onClick={() => {
-              const n = parseFloat(amount)
-              if (!isNaN(n) && n !== 0) {
-                onBalance(balance + n)
-                sound.play('win')
-                onToast(`${n > 0 ? '+' : ''}${money(n)}`)
-              }
-            }}
+            disabled={busy}
+            onClick={() => credit(steamId, parseFloat(amount))}
           >
-            Изменить DP
+            Выдать
           </button>
         </div>
+        <div className="admin-row" style={{ marginTop: 10 }}>
+          <button
+            className="btn go"
+            disabled={busy}
+            onClick={() => credit(user.id, parseFloat(amount) || 1000)}
+          >
+            Себе +{amount || '1000'}
+          </button>
+          <button className="btn go" disabled={busy} onClick={() => credit(user.id, 10000)}>
+            Себе +10 000
+          </button>
+          <button className="btn" disabled={busy} onClick={() => credit(user.id, 50000)}>
+            Себе +50 000
+          </button>
+        </div>
+        <p className="hint">Ваш баланс сейчас: <b>{money(balance)}</b></p>
       </section>
 
       <section className="admin-section">
-        <h3>Выдать предмет</h3>
+        <h3>Выдать предмет (себе)</h3>
         <div className="admin-row">
           <input value={itemQuery} onChange={(e) => setItemQuery(e.target.value)} placeholder="Название скина…" />
           <button className="btn" onClick={searchItems}>
@@ -99,15 +144,24 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
       </section>
 
       <section className="admin-section">
-        <h3>Быстро</h3>
+        <h3>Быстро (предметы себе)</h3>
         <div className="admin-row">
-          <button className="btn go" onClick={() => { onBalance(balance + 10000); onToast('+10 000 DP') }}>
-            +10 000 DP
-          </button>
-          <button className="btn" onClick={() => { onAddItem('ak-47|redline|ft'); onToast('AK-47 Redline') }}>
+          <button
+            className="btn"
+            onClick={() => {
+              onAddItem('ak-47|redline|ft')
+              onToast('AK-47 Redline')
+            }}
+          >
             Redline
           </button>
-          <button className="btn" onClick={() => { onAddItem('karambit|doppler|fn'); onToast('Karambit Doppler') }}>
+          <button
+            className="btn"
+            onClick={() => {
+              onAddItem('karambit|doppler|fn')
+              onToast('Karambit Doppler')
+            }}
+          >
             Karambit
           </button>
         </div>

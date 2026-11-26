@@ -8,12 +8,12 @@ import { ItemImage, Icon } from './ui'
 
 interface Props {
   balance: number
-  onBalance: (n: number) => void
+  onSpend: (amount: number) => Promise<boolean>
   onAddItem: (itemId: string) => void
   onToast: (m: string) => void
 }
 
-export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
+export function CasesPage({ balance, onSpend, onAddItem, onToast }: Props) {
   const [selected, setSelected] = useState<GameCase | null>(null)
   const [opening, setOpening] = useState(false)
   const [result, setResult] = useState<{ drop: CaseDrop; item: Item | null } | null>(null)
@@ -29,7 +29,11 @@ export function CasesPage({ balance, onBalance, onAddItem, onToast }: Props) {
     }
     setOpening(true)
     sound.play('tick')
-    onBalance(balance - c.price)
+    const ok = await onSpend(-c.price)
+    if (!ok) {
+      setOpening(false)
+      return
+    }
     await new Promise((r) => setTimeout(r, 1100))
     const drop = openCase(c)
     const item = await catalog.byId(drop.itemId)
