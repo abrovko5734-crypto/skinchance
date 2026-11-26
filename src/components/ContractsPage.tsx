@@ -42,7 +42,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onContract,
 
     // Выходной скин выбирается из всего каталога по стоимости внесённых предметов.
     const targetPrice = avgPrice * 1.15
-    const candidates = await catalog.search({ text: '', category: 'all', weapon: '', rarity: '', wear: '', special: 'all', min: null, max: null, sort: 'name' })
+    const candidates = await catalog.search({ text: '', category: 'all', weapon: '', rarity: '', wear: 'Factory New', special: 'all', min: null, max: null, sort: 'name' })
     let best: Item | undefined
     let bestDiff = Infinity
     // Получаем настоящие котировки небольшими пакетами, не подменяя их оценочными значениями.

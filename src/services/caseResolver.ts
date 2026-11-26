@@ -1,5 +1,6 @@
 import { catalog } from './itemCatalog'
 import { dropToItem, type GameCase } from './cases'
+import { makeName } from './sampleCatalog'
 import { usdToDp } from '../lib/storage'
 import { tablePriceUsd } from './priceTable'
 import type { Item } from './types'
@@ -18,13 +19,20 @@ export async function resolveCase(c: GameCase): Promise<WeightedItem[]> {
   const items: Item[] = []
   for (const d of c.drops) {
     const found = await catalog.byId(d.itemId)
-    items.push(found ? { ...found } : dropToItem(d))
+    if (found) {
+      // Все дропы кейсов — Factory New
+      const it = { ...found, wear: 'Factory New' as const }
+      it.name = makeName(it.weapon, it.skin, it.wear, it.stattrak, it.category === 'knife')
+      items.push(it)
+    } else {
+      items.push(dropToItem(d))
+    }
   }
   await catalog.refreshPrices(items).catch(() => {})
   return c.drops.map((d, i) => {
     const it = items[i]
     // Оставляем цену только из реального источника (Steam) или таблицы оценок
-    if (it.priceSource !== 'market' && it.priceSource !== 'table') it.price = null
+    if (it.priceSource !== 'market' && it.priceSource !== 'table' && it.priceSource !== 'estimate') it.price = null
     return { item: it, chance: d.chance }
   })
 }

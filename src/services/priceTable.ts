@@ -99,3 +99,24 @@ export function tablePriceUsd(item: Item): number | null {
   const base = `${st}${norm(w)}|${norm(s)}`
   return TABLE.get(`${base}|${wearInit}`) ?? TABLE.get(base) ?? null
 }
+
+/**
+ * Оценка по редкости (USD) — fallback, когда нет ни Steam-котировки,
+ * ни точной строки в таблице. Значения — порядковые, близкие к рынку.
+ */
+const RARITY_USD: Record<string, number> = {
+  'Consumer Grade': 0.05,
+  'Industrial Grade': 0.3,
+  'Mil-Spec': 1.2,
+  'Restricted': 5,
+  'Classified': 20,
+  'Covert': 80,
+  'Extraordinary': 400,
+  'Contraband': 2000,
+}
+
+export function rarityPriceUsd(item: Item): number | null {
+  const base = RARITY_USD[item.rarity] ?? null
+  if (base == null) return null
+  return item.stattrak ? base * 1.3 : base
+}

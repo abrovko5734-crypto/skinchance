@@ -30,8 +30,9 @@ export interface GameCase {
   drops: CaseDrop[]
 }
 
-function d(weapon: string, skin: string, wear: string, price: number, chance: number, st = false): CaseDrop {
-  return { itemId: makeId(weapon, skin, wear, st), chance, price }
+// Все дропы — только Factory New (FN). Параметр wear оставлен для совместимости.
+function d(weapon: string, skin: string, _wear: string, price: number, chance: number, st = false): CaseDrop {
+  return { itemId: makeId(weapon, skin, 'FN', st), chance, price }
 }
 
 export const CASES: GameCase[] = [
@@ -300,7 +301,7 @@ export function dropToItem(drop: CaseDrop, rarity?: string): Item {
   const body = st ? drop.itemId.slice(3) : drop.itemId
   const [weaponRaw = '', skinRaw = '', wearKey = ''] = body.split('|')
   const skin = cap(skinRaw.replace(/-/g, ' '))
-  const wear = WEAR_MAP[wearKey.toLowerCase()] ?? 'Field-Tested'
+  const wear = WEAR_MAP[wearKey.toLowerCase()] ?? 'Factory New'
   const isKnife = /knife|bayonet|karambit|butterfly|talon|nomad|stiletto|ursus|navaja|paracord|skeleton|classic|flip/i.test(weaponRaw)
   const isGloves = /gloves|wraps/i.test(weaponRaw)
   const category = isKnife ? 'knife' : isGloves ? 'gloves' : 'weapon'

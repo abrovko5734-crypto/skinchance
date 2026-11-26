@@ -5,11 +5,11 @@ import { EMPTY_QUERY, RARITIES, RARITY_COLOR, type Entry, type Query } from '../
 import { Icon, ItemImage, Modal, Tag } from './ui'
 
 interface Props { mode: 'inventory' | 'catalog'; fetcher: (q: Query) => Promise<Entry[]>; selected?: string; onPick: (e: Entry) => void; onClose: () => void }
-const WEARS = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred']
+const WEARS = ['Factory New']
 const PAGE = 90
 
 export function SkinSelectorModal({ mode, fetcher, selected, onPick, onClose }: Props) {
-  const [q, setQ] = useState<Query>(EMPTY_QUERY)
+  const [q, setQ] = useState<Query>({ ...EMPTY_QUERY, wear: 'Factory New' })
   const [text, setText] = useState('')
   const [entries, setEntries] = useState<Entry[]>([])
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
@@ -47,7 +47,7 @@ export function SkinSelectorModal({ mode, fetcher, selected, onPick, onClose }: 
         {state === 'loading' && <div className="grid">{Array.from({ length: 8 }, (_, i) => <div key={i} className="cell skeleton" />)}</div>}
         {state === 'error' && <div className="state"><p>Не удалось загрузить: {err}</p><button className="btn ghost" onClick={() => setTick(t => t + 1)}>Повторить</button></div>}
         {state === 'ok' && entries.length === 0 && <div className="state"><p>{mode === 'inventory' ? 'Инвентарь пуст или ничего не найдено' : 'Ничего не найдено'}</p>
-          <button className="btn ghost" onClick={() => { setText(''); setQ(EMPTY_QUERY) }}>Сбросить фильтры</button></div>}
+          <button className="btn ghost" onClick={() => { setText(''); setQ({ ...EMPTY_QUERY, wear: 'Factory New' }) }}>Сбросить фильтры</button></div>}
         {state === 'ok' && entries.length > 0 && <>
           <div className="grid">{shown.map(e => {
             const sel = selected === (e.uid ?? e.item.id), dis = !!e.disabledReason

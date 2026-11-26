@@ -114,7 +114,7 @@ class ItemCatalog {
 
   async refreshPrices(items: Item[]): Promise<Item[]> {
     const { fetchMarketPrices } = await import('./marketPrices')
-    const { tablePriceUsd } = await import('./priceTable')
+    const { tablePriceUsd, rarityPriceUsd } = await import('./priceTable')
     const prices = await fetchMarketPrices(items)
     for (const item of items) {
       const live = prices[item.name]
@@ -127,6 +127,12 @@ class ItemCatalog {
       if (est != null) {
         item.price = est
         item.priceSource = 'table'
+        continue
+      }
+      const byRarity = rarityPriceUsd(item)
+      if (byRarity != null) {
+        item.price = byRarity
+        item.priceSource = 'estimate'
       }
     }
     return items
@@ -177,7 +183,7 @@ class ItemCatalog {
       if (q.category !== 'all' && i.category !== q.category) return false
       if (q.weapon && i.weapon !== q.weapon) return false
       if (q.rarity && i.rarity !== q.rarity) return false
-      if (q.wear && i.wear !== q.wear) return false
+      if (q.wear && i.wear && i.wear !== q.wear) return false // предметы без износа (перчатки) проходят всегда
       if (q.special === 'stattrak' && !i.stattrak) return false
       if (q.special === 'souvenir' && !i.souvenir) return false
       if (q.min != null && (i.price ?? -1) < q.min) return false
