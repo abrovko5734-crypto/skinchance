@@ -1,4 +1,4 @@
-import type { CatalogProvider, Category, Item, Wear } from './types'
+import type { Category, Item, Wear } from './types'
 import { resolveSkinImage } from './skinImages'
 
 const W: Record<string, Wear> = {
@@ -86,7 +86,7 @@ const ROWS: Row[] = [
   ['Bloodhound Gloves', 'Charred', 'FT', 'Extraordinary', 'gloves', '', 12500],
 ]
 
-export const sampleProvider: CatalogProvider = {
+export const sampleProvider = {
   async load() {
     return ROWS.map(([weapon, skin, w, rarity, category, collection, price, st = false]): Item => ({
       id: makeId(weapon, skin, w, st),

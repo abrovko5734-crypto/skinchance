@@ -234,7 +234,7 @@ export default function App() {
           srcPrice: source.price ?? 0,
           dst: (result.final ?? result.target).name,
           dstPrice: (result.final ?? result.target).price ?? 0,
-          status: result.outcome === 'clover' && result.final ? 'clover' : result.outcome === 'win' ? 'win' : 'fail',
+          status: (result.outcome === 'clover' && result.final ? 'clover' : result.outcome === 'win' ? 'win' : 'fail') as 'win' | 'clover' | 'fail',
         },
         ...h,
       ].slice(0, 50))
