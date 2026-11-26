@@ -41,14 +41,14 @@ Steam login and the server balance require `SESSION_SECRET` + Redis. Without the
 ## Game mechanics
 
 - **Cases** — 19 cases in 5 categories (Начальные / Популярные / Премиальные / Дорогие / Эксклюзивные). Opening spends DP via `/api/auth?a=delta`, the winning drop is chosen with `crypto.getRandomValues` **before** the roulette animation starts, and the horizontal roulette (right → left, ~7–8 s ease-out) only visualizes the already-decided result. Each card shows real item name, rarity colour and market image.
-- **Roulette result** — after the strip stops, the win card is highlighted under the center pointer; the item can be claimed (goes to inventory) or sold instantly for DP (`price × 100`).
+- **Roulette result** — after the strip stops, the win card is highlighted under the center pointer; the item can be claimed (goes to inventory) or sold instantly for DP (market USD price × 83 DP; **1 DP = 0.50 грн**, ≈ 83 DP per $1).
 - **Upgrader** — source item from inventory vs target from catalog; win chance = `source/target` capped at **80 %**, Clover sector doubles the prize and re-rolls the wheel. All rolls use `crypto.getRandomValues`.
 - **Contracts** — 3–10 items → new item priced near the average input.
 - **Inventory / Profile / Admin** — sell items for DP, view stats; admins can credit DP to any SteamID64 and give items (server-side check via `ADMIN_STEAM_IDS`).
 
 ## Market prices
 
-`/api/prices` proxies Steam Community Market `priceoverview` (appid 730) server-side with a 2-minute cache and low concurrency — Steam's endpoint is undocumented and rate-limited. Unavailable quotes return `null`; the UI shows "Нет цены" instead of fabricated values. Case drop odds and catalogue data are game configuration, not live Steam data.
+`/api/prices` proxies Steam Community Market `priceoverview` (appid 730) server-side with a 2-minute cache and low concurrency — Steam's endpoint is undocumented and rate-limited. When live quotes are unavailable, `src/services/priceTable.ts` provides curated USD estimates for every case-drop item (source `table`); the UI converts USD → DP at 83 DP/$ and shows "—" only when neither source has a price. Case prices are computed from drop contents (≥ 1.18× average drop value, never below the configured price). Case drop odds and catalogue data are game configuration, not live Steam data.
 
 ## Security notes
 

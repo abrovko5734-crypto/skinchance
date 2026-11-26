@@ -73,3 +73,42 @@ export async function adminCredit(
     return { ok: false, message: 'Сеть недоступна' }
   }
 }
+
+/** Админ: узнать баланс любого SteamID */
+export async function adminBalance(
+  steamId: string,
+): Promise<{ ok: true; balance: number; targetId: string } | { ok: false; message: string }> {
+  try {
+    const r = await fetch('/api/auth?a=balance', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ steamId }),
+    })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) return { ok: false, message: j.message || 'Ошибка запроса' }
+    return { ok: true, balance: Number(j.balance) || 0, targetId: j.targetId }
+  } catch {
+    return { ok: false, message: 'Сеть недоступна' }
+  }
+}
+
+/** Админ: установить баланс игрока точно */
+export async function adminSet(
+  steamId: string,
+  amount: number,
+): Promise<{ ok: true; balance: number; targetId: string } | { ok: false; message: string }> {
+  try {
+    const r = await fetch('/api/auth?a=set', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ steamId, amount }),
+    })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) return { ok: false, message: j.message || 'Ошибка установки' }
+    return { ok: true, balance: Number(j.balance) || 0, targetId: j.targetId }
+  } catch {
+    return { ok: false, message: 'Сеть недоступна' }
+  }
+}

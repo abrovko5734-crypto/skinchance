@@ -31,4 +31,18 @@ export const moneyShort = (n: number) => {
   return n % 1 === 0 ? String(n) : n.toFixed(1)
 }
 
-export const moneyUsd = (n: number | null | undefined) => n == null || !Number.isFinite(n) ? 'Нет цены' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
+/* ===== DP economy =====
+   1 DP = 0.50 UAH. При курсе ~41.5 UAH/USD → 1 USD ≈ 83 DP.
+   Цены предметов внутри хранятся в USD (рынок Steam), в UI показываем DP. */
+export const UAH_PER_DP = 0.5
+export const UAH_PER_USD = 41.5
+export const USD_TO_DP = Math.round(UAH_PER_USD / UAH_PER_DP) // 83
+
+export const usdToDp = (usd: number) => Math.round(usd * USD_TO_DP)
+
+/** Цена предмета в DP для отображения. null → '—' */
+export const moneyDpUsd = (usd: number | null | undefined) =>
+  usd == null || !Number.isFinite(usd) ? '—' : money(usdToDp(usd))
+
+/** Гривневая стоимость DP-пакета */
+export const uahOf = (dp: number) => dp * UAH_PER_DP

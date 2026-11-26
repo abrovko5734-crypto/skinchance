@@ -1,5 +1,6 @@
 import { CASES, CASE_CAT_LABEL, type GameCase } from '../services/cases'
-import { money, moneyUsd } from '../lib/storage'
+import { casePriceDp } from '../services/caseResolver'
+import { money, moneyDpUsd } from '../lib/storage'
 import type { User } from '../lib/auth'
 import type { HistoryRow } from './UpgradeHistory'
 import type { CaseWin } from './CasesPage'
@@ -50,7 +51,7 @@ export function HomePage({ user, balance, invCount, invValue, wins, history, sta
           </div>
           <div className="home-stats">
             <div className="hs"><span>Баланс</span><b>{money(balance)}</b></div>
-            <div className="hs"><span>Инвентарь</span><b>{invCount} предм. · {moneyUsd(invValue)}</b></div>
+            <div className="hs"><span>Инвентарь</span><b>{invCount} предм. · {moneyDpUsd(invValue)}</b></div>
             <div className="hs"><span>Кейсов открыто</span><b>{stats.cases}</b></div>
             <div className="hs"><span>Апгрейдов</span><b>{stats.upgrades}</b></div>
           </div>
@@ -99,7 +100,7 @@ export function HomePage({ user, balance, invCount, invValue, wins, history, sta
                     <small>{f.sub}{f.demo ? ' · демо' : ''}</small>
                   </div>
                   <div className="wf-price">
-                    {f.price != null ? moneyUsd(f.price) : '—'}
+                    {f.price != null ? moneyDpUsd(f.price) : '—'}
                     <small>{timeAgo(f.at)}</small>
                   </div>
                 </li>
@@ -114,7 +115,7 @@ export function HomePage({ user, balance, invCount, invValue, wins, history, sta
             <span className="demo-note">Демо-рейтинг</span>
           </div>
           <ol className="top-list">
-            <TopRow place={1} name={user.name} you stat={`${invCount} предм. · ${moneyUsd(invValue)}`} />
+            <TopRow place={1} name={user.name} you stat={`${invCount} предм. · ${moneyDpUsd(invValue)}`} />
             {[
               { name: 'Nord', v: '$8 420', s: '142 апгрейда' },
               { name: 'Vektor', v: '$5 130', s: '98 апгрейдов' },
@@ -170,7 +171,7 @@ function CaseTile({ c, onOpen }: { c: GameCase; onOpen: () => void }) {
       </div>
       <div className="case-info">
         <strong>{c.name}</strong>
-        <span className="case-price">{money(c.price)}</span>
+        <span className="case-price">{money(casePriceDp(c))}</span>
       </div>
     </button>
   )

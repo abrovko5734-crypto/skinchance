@@ -28,7 +28,7 @@ export const rarityColor = (r: string) => RARITY_COLOR[r] ?? '#8d9b91'
 export interface Item {
   id: string; name: string; weapon: string; skin: string; category: Category; rarity: string
   wear: Wear; stattrak: boolean; souvenir: boolean; collection: string
-  image: string | null; price: number | null; priceSource: 'market' | null; float?: number
+  image: string | null; price: number | null; priceSource: 'market' | 'table' | null; float?: number
 }
 export interface Entry { item: Item; uid?: string; disabledReason?: string }
 export interface Query {

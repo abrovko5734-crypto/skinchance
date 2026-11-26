@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CASES, CASE_CAT_LABEL, dropToItem, type GameCase, type CaseCat } from '../services/cases'
-import { resolveCase, pickWeighted, type WeightedItem } from '../services/caseResolver'
-import { money, moneyUsd } from '../lib/storage'
+import { resolveCase, pickWeighted, casePriceDp, type WeightedItem } from '../services/caseResolver'
+import { money, moneyDpUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { rarityColor, type Item } from '../services/types'
 import { CaseRoulette } from './CaseRoulette'
@@ -33,7 +33,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
   const [selected, setSelected] = useState<GameCase | null>(null)
   const [resolved, setResolved] = useState<WeightedItem[] | null>(null)
   const [spinning, setSpinning] = useState(false)
-  const [roulette, setRoulette] = useState<{ c: GameCase; drops: WeightedItem[]; winner: Item; jackpot: boolean } | null>(null)
+  const [roulette, setRoulette] = useState<{ c: GameCase; drops: WeightedItem[]; winner: Item; jackpot: boolean; price: number } | null>(null)
   const [filter, setFilter] = useState<CaseCat | 'all'>('all')
 
   // Глубокая ссылка с главной страницы — открыть конкретный кейс
@@ -80,7 +80,8 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
 
   const doOpen = async (c: GameCase) => {
     if (spinning || roulette) return
-    if (c.price > balance) {
+    const price = casePriceDp(c)
+    if (price > balance) {
       onToast('Недостаточно DP. Пополните баланс')
       return
     }
@@ -91,7 +92,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
     }
     setSpinning(true)
     sound.play('start')
-    const ok = await onSpend(-c.price)
+    const ok = await onSpend(-price)
     if (!ok) {
       setSpinning(false)
       return
@@ -101,7 +102,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
     const prices = drops.map((d) => d.item.price).filter((p): p is number => p != null)
     const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0
     const jackpot = winner.price != null && avg > 0 && winner.price > avg * 2.5
-    setRoulette({ c, drops, winner, jackpot })
+    setRoulette({ c, drops, winner, jackpot, price })
     setSpinning(false)
     setSelected(null)
   }
@@ -189,7 +190,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
             </div>
             <div className="case-info">
               <strong>{c.name}</strong>
-              <span className="case-price">{money(c.price)}</span>
+              <span className="case-price">{money(casePriceDp(c))}</span>
             </div>
           </button>
         ))}
@@ -216,7 +217,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
                   <div className="case-lid" style={{ borderColor: `hsl(${selected.hue} 70% 55%)`, background: `linear-gradient(180deg, hsl(${selected.hue} 60% 30%), hsl(${selected.hue} 55% 18%))` }} />
                   <div className="case-body" style={{ background: `linear-gradient(180deg, hsl(${selected.hue} 45% 16%), hsl(${selected.hue} 40% 8%))` }} />
                 </div>
-                <div className="case-price-big">{money(selected.price)}</div>
+                <div className="case-price-big">{money(casePriceDp(selected))}</div>
               </div>
               <div className="case-drops">
                 <h4>
@@ -242,7 +243,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
                         <span className="drop-thumb"><ItemThumb item={it} /></span>
                         <span className="drop-id" title={it.name}>
                           {it.name}
-                          <small className="drop-usd">{moneyUsd(it.price)}</small>
+                          <small className="drop-usd">{moneyDpUsd(it.price)}</small>
                         </span>
                         <span className="drop-chance">{chance}%</span>
                       </div>
@@ -253,12 +254,12 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
               <div className="case-actions">
                 <button
                   className="btn go"
-                  disabled={spinning || resolved == null || selected.price > balance}
+                  disabled={spinning || resolved == null || casePriceDp(selected) > balance}
                   onClick={() => doOpen(selected)}
                 >
-                  {spinning ? 'Списание DP…' : resolved == null ? 'Загрузка цен…' : `Открыть за ${money(selected.price)}`}
+                  {spinning ? 'Списание DP…' : resolved == null ? 'Загрузка цен…' : `Открыть за ${money(casePriceDp(selected))}`}
                 </button>
-                {selected.price > balance && <p className="hint">Недостаточно DP — пополните баланс</p>}
+                {casePriceDp(selected) > balance && <p className="hint">Недостаточно DP — пополните баланс</p>}
               </div>
             </div>
           </div>
@@ -268,7 +269,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
       {roulette && (
         <CaseRoulette
           caseName={roulette.c.name}
-          casePrice={roulette.c.price}
+          casePrice={roulette.price}
           drops={roulette.drops}
           winner={roulette.winner}
           jackpot={roulette.jackpot}

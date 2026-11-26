@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { money, moneyUsd } from '../lib/storage'
+import { money, moneyDpUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Item } from '../services/types'
 import type { User } from '../lib/auth'
-import { isAdminUser, adminCredit } from '../lib/auth'
+import { isAdminUser, adminCredit, adminBalance, adminSet } from '../lib/auth'
 
 interface Props {
   user: User
@@ -20,6 +20,8 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
   const [itemQuery, setItemQuery] = useState('')
   const [found, setFound] = useState<Item[]>([])
   const [busy, setBusy] = useState(false)
+  const [balResult, setBalResult] = useState<{ steamId: string; balance: number } | null>(null)
+  const [setBalInput, setSetBalInput] = useState('')
 
   if (!isAdminUser(user)) {
     return (
@@ -66,6 +68,44 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
     sound.play('win')
     onToast(`${n > 0 ? '+' : ''}${money(n)} → ${targetId.slice(-6)} · баланс ${money(res.balance)}`)
     if (targetId.trim() === user.id) onBalance(res.balance)
+    if (targetId.trim() === steamId.trim()) setBalResult({ steamId: targetId.trim(), balance: res.balance })
+  }
+
+  const checkBalance = async () => {
+    const id = steamId.trim()
+    if (!/^\d{17}$/.test(id)) {
+      onToast('Укажите корректный SteamID64 (17 цифр)')
+      return
+    }
+    setBusy(true)
+    const res = await adminBalance(id)
+    setBusy(false)
+    if (!res.ok) {
+      onToast(res.message)
+      return
+    }
+    setBalResult({ steamId: res.targetId, balance: res.balance })
+    sound.play('select')
+  }
+
+  const setBalance = async () => {
+    const id = steamId.trim()
+    const n = parseFloat(setBalInput)
+    if (!/^\d{17}$/.test(id) || !Number.isFinite(n) || n < 0) {
+      onToast('Укажите SteamID64 и сумму ≥ 0')
+      return
+    }
+    setBusy(true)
+    const res = await adminSet(id, n)
+    setBusy(false)
+    if (!res.ok) {
+      onToast(res.message)
+      return
+    }
+    sound.play('win')
+    setBalResult({ steamId: res.targetId, balance: res.balance })
+    if (id === user.id) onBalance(res.balance)
+    onToast(`Баланс ${id.slice(-6)} = ${money(res.balance)}`)
   }
 
   return (
@@ -113,7 +153,30 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
           <button className="btn" disabled={busy} onClick={() => credit(user.id, 50000)}>
             Себе +50 000
           </button>
+          <button className="btn" disabled={busy} onClick={() => credit(user.id, 250000)}>
+            Себе +250 000
+          </button>
         </div>
+        <div className="admin-row" style={{ marginTop: 10 }}>
+          <button className="btn" disabled={busy || !/^\d{17}$/.test(steamId.trim())} onClick={checkBalance}>
+            Проверить баланс
+          </button>
+          <input
+            type="number"
+            value={setBalInput}
+            onChange={(e) => setSetBalInput(e.target.value)}
+            placeholder="Установить баланс ="
+            style={{ maxWidth: 180 }}
+          />
+          <button className="btn" disabled={busy || !setBalInput} onClick={setBalance}>
+            Установить
+          </button>
+        </div>
+        {balResult && (
+          <p className="hint">
+            Баланс <b>{balResult.steamId}</b>: <b>{money(balResult.balance)}</b>
+          </p>
+        )}
         <p className="hint">Ваш баланс сейчас: <b>{money(balance)}</b></p>
       </section>
 
@@ -137,7 +200,7 @@ export function AdminPanel({ user, balance, onBalance, onAddItem, onToast }: Pro
               }}
             >
               <strong>{it.name}</strong>
-              <span>{moneyUsd(it.price)}</span>
+              <span>{moneyDpUsd(it.price)}</span>
             </button>
           ))}
         </div>

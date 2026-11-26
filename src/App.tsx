@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { calcOdds, targetForChance, targetForMult, type Odds, type Outcome } from './lib/odds'
 import { sound } from './lib/sound'
-import { load, money, save } from './lib/storage'
+import { load, money, save, usdToDp } from './lib/storage'
 import { catalog } from './services/itemCatalog'
 import { upgradeApi, type UpgradeResult } from './services/upgradeService'
 import type { Entry, Item, Query } from './services/types'
@@ -194,14 +194,14 @@ export default function App() {
 
   const sellItem = useCallback(async (u: string, price: number) => {
     setInv((prev) => prev.filter((i) => i.uid !== u))
-    await applyDelta(price * 100) // $1 market value = 100 virtual DP
+    await applyDelta(usdToDp(price)) // USD market value → DP (1 DP = 0.50 грн)
   }, [applyDelta])
 
   const sellAll = useCallback(async () => {
     const total = inventoryEntries.reduce((s, e) => s + (e.item.price ?? 0), 0)
     if (total <= 0) return
     setInv([])
-    await applyDelta(total * 100) // $1 market value = 100 virtual DP
+    await applyDelta(usdToDp(total))
   }, [inventoryEntries, applyDelta])
 
   const applyPreset = async (kind: 'chance' | 'mult', value: number) => {

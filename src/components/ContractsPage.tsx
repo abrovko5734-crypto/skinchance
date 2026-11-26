@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { moneyUsd } from '../lib/storage'
+import { moneyDpUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Entry, Item } from '../services/types'
@@ -111,7 +111,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onContract,
             Выбрано: <b>{selected.length}/10</b>
             {selected.length > 0 && <span className="rarity-badge">Любые скины</span>}
           </div>
-          {selected.length > 0 && <div>Средняя цена рынка: {moneyUsd(avgPrice)}</div>}
+          {selected.length > 0 && <div>Средняя цена рынка: {moneyDpUsd(avgPrice)}</div>}
           <button className="btn go" disabled={!canContract || busy} onClick={doContract}>
             {busy ? 'Контракт…' : `Создать контракт (${selected.length}/10)`}
           </button>
@@ -123,7 +123,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onContract,
           <h3>Результат</h3>
           <ItemImage item={result} size="lg" />
           <strong>{result.name}</strong>
-          <span>{moneyUsd(result.price)}</span>
+          <span>{moneyDpUsd(result.price)}</span>
           <button className="btn" onClick={() => setResult(null)}>
             OK
           </button>
@@ -143,7 +143,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onContract,
             <div className="inv-meta">
               <strong>{e.item.weapon}</strong>
               <span>{e.item.skin}</span>
-              <em>{moneyUsd(e.item.price)}</em>
+              <em>{moneyDpUsd(e.item.price)}</em>
             </div>
           </button>
         ))}

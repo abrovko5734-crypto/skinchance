@@ -114,12 +114,19 @@ class ItemCatalog {
 
   async refreshPrices(items: Item[]): Promise<Item[]> {
     const { fetchMarketPrices } = await import('./marketPrices')
+    const { tablePriceUsd } = await import('./priceTable')
     const prices = await fetchMarketPrices(items)
     for (const item of items) {
-      const price = prices[item.name]
-      if (typeof price === 'number') {
-        item.price = price
+      const live = prices[item.name]
+      if (typeof live === 'number') {
+        item.price = live
         item.priceSource = 'market'
+        continue
+      }
+      const est = tablePriceUsd(item)
+      if (est != null) {
+        item.price = est
+        item.priceSource = 'table'
       }
     }
     return items

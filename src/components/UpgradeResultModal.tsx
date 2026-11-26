@@ -1,4 +1,4 @@
-import { moneyUsd } from '../lib/storage'
+import { moneyDpUsd } from '../lib/storage'
 import type { UpgradeResult } from '../services/upgradeService'
 import { Clover, Icon, ItemImage, Modal } from './ui'
 import { Confetti } from './Confetti'
@@ -15,12 +15,12 @@ export function UpgradeResultModal({ res, onClose, onRepeat, onNew }: Props) {
         {final ? (<>
           <ItemImage item={final} size="lg" />
           <h3>{final.name}</h3>
-          <strong className="r-price">{moneyUsd(final.price)}</strong>
-          {clover && <p className="r-note">Цепочка Clover: {res.steps.map(s => `${moneyUsd(s.stake)}→${moneyUsd(s.target)}`).join(' · ')}. Итог: {moneyUsd(final.price)}.</p>}
+          <strong className="r-price">{moneyDpUsd(final.price)}</strong>
+          {clover && <p className="r-note">Цепочка Clover: {res.steps.map(s => `${moneyDpUsd(s.stake)}→${moneyDpUsd(s.target)}`).join(' · ')}. Итог: {moneyDpUsd(final.price)}.</p>}
           <p className="r-meta">Предмет добавлен в инвентарь · {source.name} списан</p>
         </>) : (<>
           <p className="r-fail-t">Цель не получена</p>
-          <p className="r-meta">{source.name} ({moneyUsd(source.price)}) списан.{res.steps.length > 1 ? ` Цепочка Clover оборвалась на колесе ${res.steps.length}: ${moneyUsd(res.steps[res.steps.length - 1].stake)}→${moneyUsd(res.steps[res.steps.length - 1].target)}.` : ` Выпало ${res.roll.toFixed(2)} — вне зоны успеха (${res.odds.totalWin}%).`}</p>
+          <p className="r-meta">{source.name} ({moneyDpUsd(source.price)}) списан.{res.steps.length > 1 ? ` Цепочка Clover оборвалась на колесе ${res.steps.length}: ${moneyDpUsd(res.steps[res.steps.length - 1].stake)}→${moneyDpUsd(res.steps[res.steps.length - 1].target)}.` : ` Выпало ${res.roll.toFixed(2)} — вне зоны успеха (${res.odds.totalWin}%).`}</p>
         </>)}
         <div className="btn-row wide">
           {fail ? <button className="btn primary" onClick={onRepeat}>Повторить</button> : <button className="btn primary" onClick={onClose}>Продолжить</button>}

@@ -190,6 +190,35 @@ export async function POST(req: Request) {
     }
   }
 
+  // Админ: просмотр баланса любого игрока
+  if (a === 'balance') {
+    if (!isAdmin(s.id)) return json({ error: 'forbidden', message: 'Только админ' }, 403)
+    const targetId = String(body.steamId || '').trim()
+    if (!/^\d{17}$/.test(targetId)) return json({ error: 'bad_request', message: 'Неверный Steam ID (17 цифр)' }, 400)
+    try {
+      const bal = Number(await redis('GET', `bal:${targetId}`)) || 0
+      return json({ balance: bal, targetId })
+    } catch (e: any) {
+      return json({ error: 'db', message: e?.message || 'База недоступна' }, 502)
+    }
+  }
+
+  // Админ: установить баланс игрока точно в указанное значение
+  if (a === 'set') {
+    if (!isAdmin(s.id)) return json({ error: 'forbidden', message: 'Только админ' }, 403)
+    const targetId = String(body.steamId || '').trim()
+    const amount = Number(body.amount)
+    if (!/^\d{17}$/.test(targetId)) return json({ error: 'bad_request', message: 'Неверный Steam ID (17 цифр)' }, 400)
+    if (!Number.isFinite(amount) || amount < 0 || amount > 100_000_000)
+      return json({ error: 'bad_request', message: 'Сумма (0..100M)' }, 400)
+    try {
+      await redis('SET', `bal:${targetId}`, String(Math.round(amount * 100) / 100))
+      return json({ balance: amount, targetId })
+    } catch (e: any) {
+      return json({ error: 'db', message: e?.message || 'База недоступна' }, 502)
+    }
+  }
+
   // Изменение баланса текущего игрока (кейсы / продажа)
   if (a === 'delta') {
     const amount = Number(body.amount)

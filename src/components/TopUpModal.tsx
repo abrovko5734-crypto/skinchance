@@ -12,6 +12,23 @@ export function TopUpModal({ onClose }: { onClose: () => void }) {
         </header>
         <div className="topup-body">
           <p>Пополнение только через Telegram. Бесплатной выдачи баланса нет.</p>
+          <p className="hint" style={{ marginTop: 8 }}>
+            Курс: <b>1 DP = 0.50 грн</b> · 1 $ ≈ 83 DP
+          </p>
+          <div className="topup-packages">
+            {[
+              [100, 50],
+              [500, 250],
+              [1000, 500],
+              [5000, 2500],
+              [10000, 5000],
+            ].map(([dp, uah]) => (
+              <div key={dp} className="topup-pkg">
+                <strong>{dp.toLocaleString('ru-RU')} DP</strong>
+                <span>{uah.toLocaleString('ru-RU')} грн</span>
+              </div>
+            ))}
+          </div>
           <ol>
             <li>
               Напишите в Telegram:{' '}

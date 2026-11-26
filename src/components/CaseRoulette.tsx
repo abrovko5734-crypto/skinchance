@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { money, moneyUsd } from '../lib/storage'
+import { money, moneyDpUsd, usdToDp } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { rarityColor, rarityRu, type Item } from '../services/types'
 import type { WeightedItem } from '../services/caseResolver'
@@ -163,8 +163,8 @@ export function CaseRoulette({ caseName, casePrice, drops, winner, jackpot, onCl
                 <span className="eyebrow" style={{ color: rarityColor(won.rarity) }}>{rarityRu(won.rarity)}</span>
                 <h4>{won.name}</h4>
                 <div className="rr-price">
-                  {moneyUsd(won.price)}
-                  {won.price != null && <em>≈ {(won.price * 100).toFixed(0)} DP</em>}
+                  {moneyDpUsd(won.price)}
+                  {won.price != null && <em>1 DP = 0.50 грн</em>}
                 </div>
               </div>
             </div>
@@ -178,7 +178,7 @@ export function CaseRoulette({ caseName, casePrice, drops, winner, jackpot, onCl
                 disabled={won.price == null}
                 title={won.price == null ? 'Цена недоступна' : undefined}
               >
-                Продать ≈ {won.price != null ? (won.price * 100).toFixed(0) : '—'} DP
+                Продать ≈ {won.price != null ? money(usdToDp(won.price)) : '—'}
               </button>
             </div>
           </div>

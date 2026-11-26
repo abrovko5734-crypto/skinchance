@@ -1,4 +1,4 @@
-import { money, moneyUsd } from '../lib/storage'
+import { moneyDpUsd } from '../lib/storage'
 import type { Odds } from '../lib/odds'
 import { rarityColor, rarityRu, type Item } from '../services/types'
 import { Icon, ItemImage, Tag } from './ui'
@@ -15,7 +15,7 @@ export function SourceSkinCard({ item, onSelect, onClear, disabled }: SProps) {
       {item ? (<>
         <ItemImage item={item} size="lg" />
         <div className="skin-info"><small>{item.weapon}</small><h3>{item.skin}</h3><Meta item={item} /></div>
-        <div className="price-row"><span>Цена рынка · USD</span><strong key={item.price}>{moneyUsd(item.price)}</strong></div>
+        <div className="price-row"><span>Цена · DP</span><strong key={item.price}>{moneyDpUsd(item.price)}</strong></div>
         <div className="btn-row"><button className="btn ghost" disabled={disabled} onClick={onSelect}><Icon n="swap" s={16} />Сменить</button>
           <button className="btn ghost danger" disabled={disabled} onClick={onClear} aria-label="Убрать предмет"><Icon n="x" s={16} /></button></div>
       </>) : (
@@ -33,9 +33,9 @@ export function TargetSkinCard({ item, odds, onSelect, onClear, disabled }: TPro
       {item ? (<>
         <ItemImage item={item} size="lg" />
         <div className="skin-info"><small>{item.weapon}</small><h3>{item.skin}</h3><Meta item={item} /></div>
-        <div className="price-row"><span>Цена рынка · USD</span><strong key={item.price}>{moneyUsd(item.price)}</strong></div>
-        {odds.valid && <div className="win-info"><div><span>Обычный выигрыш</span><b>{moneyUsd(item.price)}</b></div>
-          <div className="clv"><span>Clover x{odds.cloverMultiplier}, до</span><b>{money(odds.cloverCeiling)}</b></div></div>}
+        <div className="price-row"><span>Цена · DP</span><strong key={item.price}>{moneyDpUsd(item.price)}</strong></div>
+        {odds.valid && <div className="win-info"><div><span>Обычный выигрыш</span><b>{moneyDpUsd(item.price)}</b></div>
+          <div className="clv"><span>Clover x{odds.cloverMultiplier}, до</span><b>{moneyDpUsd(odds.cloverCeiling)}</b></div></div>}
         <div className="btn-row"><button className="btn ghost" disabled={disabled} onClick={onSelect}><Icon n="swap" s={16} />Сменить</button>
           <button className="btn ghost danger" disabled={disabled} onClick={onClear} aria-label="Убрать цель"><Icon n="x" s={16} /></button></div>
       </>) : (
