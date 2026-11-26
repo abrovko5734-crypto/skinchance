@@ -4,9 +4,10 @@ import { Icon } from './ui'
 import type { User } from '../lib/auth'
 import { isAdminUser } from '../lib/auth'
 
-export type Tab = 'cases' | 'upgrade' | 'contracts' | 'inventory' | 'profile' | 'admin'
+export type Tab = 'home' | 'cases' | 'upgrade' | 'contracts' | 'inventory' | 'profile' | 'admin'
 
 const NAV: { id: Tab; label: string; adminOnly?: boolean }[] = [
+  { id: 'home', label: 'Главная' },
   { id: 'cases', label: 'Кейсы' },
   { id: 'upgrade', label: 'Апгрейдер' },
   { id: 'contracts', label: 'Контракты' },
@@ -43,7 +44,7 @@ export function Navbar({
         aria-label="SkinChance"
         onClick={(e) => {
           e.preventDefault()
-          onTab('cases')
+          onTab('home')
         }}
       >
         <img src="/logo.png" alt="SkinChance" />

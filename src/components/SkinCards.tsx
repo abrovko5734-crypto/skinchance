@@ -1,10 +1,10 @@
 import { money, moneyUsd } from '../lib/storage'
 import type { Odds } from '../lib/odds'
-import { RARITY_COLOR, type Item } from '../services/types'
+import { rarityColor, rarityRu, type Item } from '../services/types'
 import { Icon, ItemImage, Tag } from './ui'
 
 function Meta({ item }: { item: Item }) {
-  return <div className="tags"><span className="rar"><i style={{ background: RARITY_COLOR[item.rarity] }} />{item.rarity}</span>
+  return <div className="tags"><span className="rar"><i style={{ background: rarityColor(item.rarity) }} />{rarityRu(item.rarity)}</span>
     {item.wear && <Tag>{item.wear}</Tag>}{item.stattrak && <Tag tone="gold">StatTrak™</Tag>}{item.souvenir && <Tag tone="gold">Souvenir</Tag>}</div>
 }
 interface SProps { item: Item | null; onSelect: () => void; onClear: () => void; disabled: boolean }

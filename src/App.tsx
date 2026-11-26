@@ -15,7 +15,8 @@ import { UpgradeHistory, type HistoryRow } from './components/UpgradeHistory'
 import { Clover } from './components/ui'
 import { fetchMe, deltaBalance, type AuthState, type User, isAdminUser } from './lib/auth'
 import { LoginScreen } from './components/LoginScreen'
-import { CasesPage } from './components/CasesPage'
+import { CasesPage, type CaseWin } from './components/CasesPage'
+import { HomePage } from './components/HomePage'
 import { ContractsPage } from './components/ContractsPage'
 import { InventoryPage } from './components/InventoryPage'
 import { AdminPanel } from './components/AdminPanel'
@@ -30,6 +31,9 @@ const SEED: HistoryRow[] = [
   { id: 's2', player: 'Vektor', hue: 30, src: 'Tec-9 | Fuel Injector', srcPrice: 65, dst: 'AK-47 | Redline', dstPrice: 480, status: 'clover' },
   { id: 's3', player: 'Lira', hue: 260, src: 'AWP | Asiimov', srcPrice: 1580, status: 'fail' },
 ]
+
+interface Stats { cases: number; upgrades: number; contracts: number }
+const EMPTY_STATS: Stats = { cases: 0, upgrades: 0, contracts: 0 }
 
 type Phase = 'idle' | 'spinning' | 'clover' | 'result'
 
@@ -48,7 +52,10 @@ export default function App() {
   const [inv, setInv] = useState<Inv[]>([])
   const [history, setHistory] = useState<HistoryRow[]>(SEED)
   const [soundOn, setSoundOn] = useState(true)
-  const [tab, setTab] = useState<Tab>('cases')
+  const [tab, setTab] = useState<Tab>('home')
+  const [wins, setWins] = useState<CaseWin[]>([])
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS)
+  const [openCaseId, setOpenCaseId] = useState<string | null>(null)
   const [toasts, setToasts] = useState<{ id: string; m: string }[]>([])
   const [ready, setReady] = useState(false)
   const [showTopUp, setShowTopUp] = useState(false)
@@ -76,12 +83,16 @@ export default function App() {
     setBalance(auth.balance ?? 0)
     setInv(load<Inv[]>(`inv.${userKey}`, []))
     setHistory(load<HistoryRow[]>(`hist.${userKey}`, SEED))
+    setWins(load<CaseWin[]>(`wins.${userKey}`, []))
+    setStats(load<Stats>(`stats.${userKey}`, EMPTY_STATS))
     setReady(true)
     catalog.load()
   }, [auth, userKey])
 
   useEffect(() => { if (ready) save(`inv.${userKey}`, inv) }, [inv, userKey, ready])
   useEffect(() => { if (ready) save(`hist.${userKey}`, history.slice(0, 50)) }, [history, userKey, ready])
+  useEffect(() => { if (ready) save(`wins.${userKey}`, wins.slice(0, 30)) }, [wins, userKey, ready])
+  useEffect(() => { if (ready) save(`stats.${userKey}`, stats) }, [stats, userKey, ready])
   useEffect(() => { sound.enabled = soundOn }, [soundOn])
 
   /** Синхронизация баланса с сервером */
@@ -170,9 +181,11 @@ export default function App() {
     return list
   }, [remember])
 
-  const addItem = useCallback((itemId: string, price?: number, item?: Item) => {
-    setInv((prev) => [...prev, { uid: uid(), itemId, price }])
+  const addItem = useCallback((itemId: string, price?: number, item?: Item): string => {
+    const nid = uid()
+    setInv((prev) => [...prev, { uid: nid, itemId, price }])
     if (item) remember([item])
+    return nid
   }, [remember])
 
   const removeItems = useCallback((uids: string[]) => {
@@ -240,10 +253,12 @@ export default function App() {
       }
 
       const userName = auth.status === 'in' ? auth.user.name : 'Вы'
+      setStats((s) => ({ ...s, upgrades: s.upgrades + 1 }))
       setHistory((h) => [
         {
           id: uid(),
           player: userName,
+          you: true,
           hue: Math.floor(Math.random() * 360),
           src: source.name,
           srcPrice: source.price ?? 0,
@@ -261,6 +276,16 @@ export default function App() {
       setPhase('idle')
     }
   }
+
+  const handleWin = useCallback((w: CaseWin) => {
+    setWins((prev) => [w, ...prev].slice(0, 30))
+    setStats((s) => ({ ...s, cases: s.cases + 1 }))
+  }, [])
+
+  const handleOpenCase = useCallback((c: { id: string }) => {
+    setOpenCaseId(c.id)
+    setTab('cases')
+  }, [])
 
   if (auth.status === 'loading') {
     return (
@@ -292,11 +317,39 @@ export default function App() {
       />
 
       <main className="main">
+        {tab === 'home' && (
+          <HomePage
+            user={user}
+            balance={balance}
+            invCount={inventoryEntries.length}
+            invValue={invValue}
+            wins={wins}
+            history={history}
+            stats={stats}
+            onGo={setTab}
+            onOpenCase={handleOpenCase}
+          />
+        )}
         {tab === 'cases' && (
-          <CasesPage balance={balance} onSpend={applyDelta} onAddItem={addItem} onToast={toast} />
+          <CasesPage
+            balance={balance}
+            onSpend={applyDelta}
+            onAddItem={addItem}
+            onSell={sellItem}
+            onWin={handleWin}
+            onToast={toast}
+            openCaseId={openCaseId}
+            onOpenCaseHandled={() => setOpenCaseId(null)}
+          />
         )}
         {tab === 'contracts' && (
-          <ContractsPage inventory={inventoryEntries} onRemoveItems={removeItems} onAddItem={addItem} onToast={toast} />
+          <ContractsPage
+            inventory={inventoryEntries}
+            onRemoveItems={removeItems}
+            onAddItem={addItem}
+            onContract={() => setStats((s) => ({ ...s, contracts: s.contracts + 1 }))}
+            onToast={toast}
+          />
         )}
         {tab === 'inventory' && (
           <InventoryPage inventory={inventoryEntries} onSell={sellItem} onSellAll={sellAll} onToast={toast} />

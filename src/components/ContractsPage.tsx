@@ -9,12 +9,13 @@ interface Props {
   inventory: Entry[]
   onRemoveItems: (uids: string[]) => void
   onAddItem: (itemId: string) => void
+  onContract?: () => void
   onToast: (m: string) => void
 }
 
 /** Контракт: от 3 до 10 любых скинов, редкость не ограничивает выбор. */
 
-export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: Props) {
+export function ContractsPage({ inventory, onRemoveItems, onAddItem, onContract, onToast }: Props) {
   const [selected, setSelected] = useState<string[]>([]) // uids
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Item | null>(null)
@@ -66,6 +67,7 @@ export function ContractsPage({ inventory, onRemoveItems, onAddItem, onToast }: 
     setSelected([])
     if (success) {
       onAddItem(best.id)
+      onContract?.()
       setResult(best)
       sound.play('win')
       onToast(`Контракт успешен! Получен ${best.name}`)

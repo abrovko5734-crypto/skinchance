@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
-import type { Entry } from '../services/types'
+import { rarityColor, rarityRu, type Entry } from '../services/types'
 import { ItemImage, Icon } from './ui'
 
 interface Props {
@@ -43,7 +43,7 @@ export function InventoryPage({ inventory, onSell, onSellAll, onToast }: Props) 
             <ItemImage item={e.item} size="md" />
             <div className="inv-meta">
               <strong>{e.item.name}</strong>
-              <span className="rarity" style={{ color: 'var(--g2)' }}>{e.item.rarity}</span>
+              <span className="rarity" style={{ color: rarityColor(e.item.rarity) }}>{rarityRu(e.item.rarity)}</span>
               <em>{moneyUsd(e.item.price)}</em>
               <button
                 className="btn sell"

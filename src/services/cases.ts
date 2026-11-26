@@ -1,4 +1,16 @@
-import { makeId } from './sampleCatalog'
+import { makeId, makeName } from './sampleCatalog'
+import { resolveSkinImage } from './skinImages'
+import type { Item, Wear } from './types'
+
+export type CaseCat = 'starter' | 'popular' | 'premium' | 'expensive' | 'exclusive'
+
+export const CASE_CAT_LABEL: Record<CaseCat, string> = {
+  starter: 'Начальные',
+  popular: 'Популярные',
+  premium: 'Премиальные',
+  expensive: 'Дорогие',
+  exclusive: 'Эксклюзивные',
+}
 
 export interface CaseDrop {
   itemId: string
@@ -13,6 +25,7 @@ export interface GameCase {
   image: string // path or gradient key
   hue: number
   rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
+  cat: CaseCat
   tag?: string
   drops: CaseDrop[]
 }
@@ -23,7 +36,7 @@ function d(weapon: string, skin: string, wear: string, price: number, chance: nu
 
 export const CASES: GameCase[] = [
   {
-    id: 'starter', name: 'Starter Case', price: 35, hue: 140, rarity: 'common', image: 'case-starter',
+    id: 'starter', name: 'Starter Case', price: 35, hue: 140, rarity: 'common', cat: 'starter', image: 'case-starter',
     drops: [
       d('P250', 'Sand Dune', 'FT', 3, 42),
       d('Tec-9', 'Fuel Injector', 'FT', 65, 28),
@@ -34,7 +47,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'phoenix', name: 'Phoenix Case', price: 95, hue: 18, rarity: 'rare', tag: 'Popular', image: 'case-phoenix',
+    id: 'phoenix', name: 'Phoenix Case', price: 95, hue: 18, rarity: 'rare', cat: 'popular', tag: 'Popular', image: 'case-phoenix',
     drops: [
       d('P90', 'Asiimov', 'FT', 135, 32),
       d('Glock-18', 'Water Elemental', 'FT', 85, 24),
@@ -46,7 +59,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'asiimov', name: 'Asiimov Collection', price: 180, hue: 28, rarity: 'epic', image: 'case-asiimov',
+    id: 'asiimov', name: 'Asiimov Collection', price: 180, hue: 28, rarity: 'epic', cat: 'popular', image: 'case-asiimov',
     drops: [
       d('P90', 'Asiimov', 'FT', 135, 34),
       d('M4A4', 'Asiimov', 'FT', 1150, 26),
@@ -57,7 +70,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'hyper', name: 'Hyper Beast', price: 140, hue: 290, rarity: 'rare', image: 'case-hyper',
+    id: 'hyper', name: 'Hyper Beast', price: 140, hue: 290, rarity: 'rare', cat: 'popular', image: 'case-hyper',
     drops: [
       d('Nova', 'Hyper Beast', 'FT', 120, 34),
       d('M4A1-S', 'Hyper Beast', 'FT', 820, 28),
@@ -68,7 +81,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'printstream', name: 'Printstream Case', price: 240, hue: 200, rarity: 'epic', tag: 'Hot', image: 'case-print',
+    id: 'printstream', name: 'Printstream Case', price: 240, hue: 200, rarity: 'epic', cat: 'premium', tag: 'Hot', image: 'case-print',
     drops: [
       d('Desert Eagle', 'Printstream', 'FT', 890, 36),
       d('M4A1-S', 'Printstream', 'FT', 2800, 28),
@@ -79,7 +92,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'doppler', name: 'Doppler Knives', price: 980, hue: 265, rarity: 'legendary', image: 'case-doppler',
+    id: 'doppler', name: 'Doppler Knives', price: 980, hue: 265, rarity: 'legendary', cat: 'expensive', image: 'case-doppler',
     drops: [
       d('Flip Knife', 'Doppler', 'FN', 5400, 30),
       d('Bayonet', 'Doppler', 'FN', 8200, 25),
@@ -90,7 +103,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'fade', name: 'Fade Legends', price: 1450, hue: 320, rarity: 'legendary', tag: 'Premium', image: 'case-fade',
+    id: 'fade', name: 'Fade Legends', price: 1450, hue: 320, rarity: 'legendary', cat: 'expensive', tag: 'Premium', image: 'case-fade',
     drops: [
       d('Classic Knife', 'Fade', 'FN', 11200, 32),
       d('Skeleton Knife', 'Fade', 'FN', 28500, 24),
@@ -101,7 +114,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'gloves', name: 'Glove Box', price: 720, hue: 40, rarity: 'epic', image: 'case-gloves',
+    id: 'gloves', name: 'Glove Box', price: 720, hue: 40, rarity: 'epic', cat: 'premium', image: 'case-gloves',
     drops: [
       d('Hand Wraps', 'Cobalt Skulls', 'FT', 9800, 32),
       d('Bloodhound Gloves', 'Charred', 'FT', 12500, 26),
@@ -112,7 +125,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'redline', name: 'Redline Case', price: 110, hue: 0, rarity: 'rare', image: 'case-redline',
+    id: 'redline', name: 'Redline Case', price: 110, hue: 0, rarity: 'rare', cat: 'popular', image: 'case-redline',
     drops: [
       d('AK-47', 'Redline', 'FT', 480, 42),
       d('AK-47', 'Redline', 'MW', 820, 26),
@@ -123,7 +136,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'howl', name: 'Howl Legacy', price: 3200, hue: 8, rarity: 'mythic', tag: 'Legendary', image: 'case-howl',
+    id: 'howl', name: 'Howl Legacy', price: 3200, hue: 8, rarity: 'mythic', cat: 'expensive', tag: 'Legendary', image: 'case-howl',
     drops: [
       d('Desert Eagle', 'Blaze', 'FN', 9800, 32),
       d('AK-47', 'Fire Serpent', 'FT', 18500, 26),
@@ -134,7 +147,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'budget', name: 'Budget Box', price: 18, hue: 95, rarity: 'common', image: 'case-budget',
+    id: 'budget', name: 'Budget Box', price: 18, hue: 95, rarity: 'common', cat: 'starter', image: 'case-budget',
     drops: [
       d('P250', 'Sand Dune', 'FT', 3, 48),
       d('Tec-9', 'Fuel Injector', 'FT', 65, 28),
@@ -144,7 +157,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'neon', name: 'Neon Rider', price: 85, hue: 305, rarity: 'rare', image: 'case-neon',
+    id: 'neon', name: 'Neon Rider', price: 85, hue: 305, rarity: 'rare', cat: 'starter', image: 'case-neon',
     drops: [
       d('MAC-10', 'Neon Rider', 'FT', 280, 36),
       d('MP9', 'Hydra', 'FT', 190, 26),
@@ -155,7 +168,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'containment', name: 'Containment Breach', price: 420, hue: 175, rarity: 'epic', image: 'case-contain',
+    id: 'containment', name: 'Containment Breach', price: 420, hue: 175, rarity: 'epic', cat: 'premium', image: 'case-contain',
     drops: [
       d('AWP', 'Containment Breach', 'FT', 4200, 30),
       d('AWP', 'Neo-Noir', 'FT', 1850, 26),
@@ -166,7 +179,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'skeleton', name: 'Skeleton Case', price: 1100, hue: 48, rarity: 'legendary', tag: 'Limited', image: 'case-skeleton',
+    id: 'skeleton', name: 'Skeleton Case', price: 1100, hue: 48, rarity: 'legendary', cat: 'premium', tag: 'Limited', image: 'case-skeleton',
     drops: [
       d('Paracord Knife', 'Marble Fade', 'FN', 8900, 32),
       d('Nomad Knife', 'Doppler', 'FN', 9800, 24),
@@ -177,7 +190,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'wildfire', name: 'Wildfire Case', price: 210, hue: 22, rarity: 'epic', image: 'case-wildfire',
+    id: 'wildfire', name: 'Wildfire Case', price: 210, hue: 22, rarity: 'epic', cat: 'popular', image: 'case-wildfire',
     drops: [
       d('AWP', 'Wildfire', 'FT', 3100, 28),
       d('AK-47', 'Asiimov', 'FT', 2100, 24),
@@ -188,7 +201,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'cz', name: 'CZ Victoria', price: 65, hue: 345, rarity: 'rare', image: 'case-cz',
+    id: 'cz', name: 'CZ Victoria', price: 65, hue: 345, rarity: 'rare', cat: 'starter', image: 'case-cz',
     drops: [
       d('CZ75-Auto', 'Victoria', 'FT', 420, 32),
       d('Five-SeveN', 'Fairy Tale', 'FT', 210, 26),
@@ -199,7 +212,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'shotgun', name: 'Shotgun Party', price: 48, hue: 70, rarity: 'common', image: 'case-shotgun',
+    id: 'shotgun', name: 'Shotgun Party', price: 48, hue: 70, rarity: 'common', cat: 'starter', image: 'case-shotgun',
     drops: [
       d('Nova', 'Hyper Beast', 'FT', 120, 32),
       d('XM1014', 'Tranquility', 'FT', 280, 28),
@@ -210,7 +223,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'vulcan', name: 'Vulcan Strike', price: 340, hue: 145, rarity: 'epic', image: 'case-vulcan',
+    id: 'vulcan', name: 'Vulcan Strike', price: 340, hue: 145, rarity: 'epic', cat: 'premium', image: 'case-vulcan',
     drops: [
       d('AK-47', 'Vulcan', 'FT', 3200, 34),
       d('AK-47', 'Bloodsport', 'FT', 1650, 26),
@@ -221,7 +234,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'lore', name: 'Dragon Lore Vault', price: 6500, hue: 42, rarity: 'mythic', tag: 'Mythic', image: 'case-lore',
+    id: 'lore', name: 'Dragon Lore Vault', price: 6500, hue: 42, rarity: 'mythic', cat: 'exclusive', tag: 'Mythic', image: 'case-lore',
     drops: [
       d('AK-47', 'Fire Serpent', 'FT', 18500, 28),
       d('Sport Gloves', "Pandora's Box", 'FT', 36500, 22),
@@ -232,7 +245,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'night', name: 'Night Ops', price: 55, hue: 220, rarity: 'common', image: 'case-night',
+    id: 'night', name: 'Night Ops', price: 55, hue: 220, rarity: 'common', cat: 'starter', image: 'case-night',
     drops: [
       d('USP-S', 'Kill Confirmed', 'FT', 420, 30),
       d('P2000', 'Fire Elemental', 'FT', 160, 28),
@@ -244,8 +257,77 @@ export const CASES: GameCase[] = [
   },
 ]
 
-export function openCase(c: GameCase): CaseDrop {
-  const roll = Math.random() * 100
+const WEAR_MAP: Record<string, Wear> = {
+  fn: 'Factory New', mw: 'Minimal Wear', ft: 'Field-Tested', ww: 'Well-Worn', bs: 'Battle-Scarred',
+}
+
+/** Приблизительная редкость дропа по цене — для отображения до котировки рынка. */
+export function rarityForPrice(price: number): string {
+  if (price < 5) return 'Consumer Grade'
+  if (price < 60) return 'Industrial Grade'
+  if (price < 150) return 'Mil-Spec'
+  if (price < 400) return 'Restricted'
+  if (price < 1200) return 'Classified'
+  if (price < 8000) return 'Covert'
+  return 'Extraordinary'
+}
+
+const WEAPON_FIX: Record<string, string> = {
+  'ak-47': 'AK-47', 'm4a1-s': 'M4A1-S', 'm4a4': 'M4A4', 'awp': 'AWP', 'p90': 'P90',
+  'p250': 'P250', 'tec-9': 'Tec-9', 'glock-18': 'Glock-18', 'usp-s': 'USP-S',
+  'desert-eagle': 'Desert Eagle', 'galil-ar': 'Galil AR', 'ssg-08': 'SSG 08',
+  'mac-10': 'MAC-10', 'mp9': 'MP9', 'ump-45': 'UMP-45', 'xm1014': 'XM1014',
+  'mag-7': 'MAG-7', 'sawed-off': 'Sawed-Off', 'cz75-auto': 'CZ75-Auto',
+  'five-seven': 'Five-SeveN', 'dual-berettas': 'Dual Berettas', 'famas': 'FAMAS',
+  'nova': 'Nova', 'aug': 'AUG', 'sg-553': 'SG 553', 'scar-20': 'SCAR-20',
+  'g3sg1': 'G3SG1', 'p2000': 'P2000', 'm4a1': 'M4A1', 'mp7': 'MP7', 'mp5-sd': 'MP5-SD',
+  'bayonet': 'Bayonet', 'flip-knife': 'Flip Knife', 'm9-bayonet': 'M9 Bayonet',
+  'butterfly-knife': 'Butterfly Knife', 'talon-knife': 'Talon Knife',
+  'skeleton-knife': 'Skeleton Knife', 'nomad-knife': 'Nomad Knife',
+  'classic-knife': 'Classic Knife', 'paracord-knife': 'Paracord Knife',
+  'karambit': 'Karambit', 'stiletto': 'Stiletto', 'ursus': 'Ursus',
+  'navaja': 'Navaja', 'survival-knife': 'Survival Knife',
+  'sport-gloves': 'Sport Gloves', 'moto-gloves': 'Moto Gloves',
+  'driver-gloves': 'Driver Gloves', 'specialist-gloves': 'Specialist Gloves',
+  'hand-wraps': 'Hand Wraps', 'bloodhound-gloves': 'Bloodhound Gloves',
+}
+
+const cap = (s: string) => s.replace(/(^|[\s-])([a-z])/g, (_, p, c) => p + c.toUpperCase())
+
+/** CaseDrop → полноценный Item с реальным изображением для рулетки/инвентаря. */
+export function dropToItem(drop: CaseDrop, rarity?: string): Item {
+  const st = drop.itemId.startsWith('st-')
+  const body = st ? drop.itemId.slice(3) : drop.itemId
+  const [weaponRaw = '', skinRaw = '', wearKey = ''] = body.split('|')
+  const skin = cap(skinRaw.replace(/-/g, ' '))
+  const wear = WEAR_MAP[wearKey.toLowerCase()] ?? 'Field-Tested'
+  const isKnife = /knife|bayonet|karambit|butterfly|talon|nomad|stiletto|ursus|navaja|paracord|skeleton|classic|flip/i.test(weaponRaw)
+  const isGloves = /gloves|wraps/i.test(weaponRaw)
+  const category = isKnife ? 'knife' : isGloves ? 'gloves' : 'weapon'
+  const wname = WEAPON_FIX[weaponRaw] ?? cap(weaponRaw.replace(/-/g, ' '))
+  const name = makeName(wname, skin, wear, st, isKnife)
+  return {
+    id: drop.itemId,
+    name,
+    weapon: wname,
+    skin,
+    category,
+    rarity: rarity ?? rarityForPrice(drop.price),
+    wear,
+    stattrak: st,
+    souvenir: false,
+    collection: '',
+    image: resolveSkinImage({ weapon: wname, skin, wear, stattrak: st, category }),
+    price: drop.price,
+    priceSource: null,
+  }
+}
+
+/** Криптостойкий ролл 0..100 — результат определяется ДО анимации. */
+export function rollCase(c: GameCase): CaseDrop {
+  const a = new Uint32Array(1)
+  crypto.getRandomValues(a)
+  const roll = (a[0] / 2 ** 32) * 100
   let acc = 0
   for (const drop of c.drops) {
     acc += drop.chance
@@ -253,6 +335,8 @@ export function openCase(c: GameCase): CaseDrop {
   }
   return c.drops[c.drops.length - 1]
 }
+
+export const openCase = rollCase
 
 export const RARITY_LABEL: Record<GameCase['rarity'], string> = {
   common: 'Обычный',
