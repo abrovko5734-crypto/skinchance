@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CASES, CASE_CAT_LABEL, dropToItem, type GameCase, type CaseCat } from '../services/cases'
+import { CASES, CASE_CAT_LABEL, CASE_CAT_ORDER, dropToItem, type GameCase, type CaseCat } from '../services/cases'
 import { resolveCase, pickWeighted, casePriceDp, type WeightedItem } from '../services/caseResolver'
 import { money, moneyDpUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
@@ -27,7 +27,7 @@ interface Props {
   onOpenCaseHandled?: () => void
 }
 
-const CATS: (CaseCat | 'all')[] = ['all', 'starter', 'popular', 'premium', 'expensive', 'exclusive']
+const CATS: (CaseCat | 'all')[] = ['all', ...CASE_CAT_ORDER]
 
 export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast, openCaseId, onOpenCaseHandled }: Props) {
   const [selected, setSelected] = useState<GameCase | null>(null)
@@ -124,6 +124,36 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
 
   const list = filter === 'all' ? CASES : CASES.filter((c) => c.cat === filter)
 
+  const renderCard = (c: GameCase) => (
+    <button
+      key={c.id}
+      className={`case-card rarity-${c.rarity} cat-${c.cat}`}
+      onClick={() => {
+        if (spinning) return
+        setSelected(c)
+        sound.play('select')
+      }}
+    >
+      <div
+        className="case-visual"
+        style={{
+          background: `linear-gradient(160deg, hsl(${c.hue} 45% 14%) 0%, hsl(${c.hue} 40% 9%) 55%, #0b110e 100%)`,
+        }}
+      >
+        <div className="case-box">
+          <div className="case-lid" style={{ borderColor: `hsl(${c.hue} 70% 55%)`, background: `linear-gradient(180deg, hsl(${c.hue} 60% 30%), hsl(${c.hue} 55% 18%))` }} />
+          <div className="case-body" style={{ background: `linear-gradient(180deg, hsl(${c.hue} 45% 16%), hsl(${c.hue} 40% 8%))`, borderColor: `hsl(${c.hue} 50% 30% / .6)` }} />
+        </div>
+        {c.tag && <span className={`case-tag tag-${c.tag.toLowerCase()}`}>{c.tag}</span>}
+        <span className="case-cat">{CASE_CAT_LABEL[c.cat]}</span>
+      </div>
+      <div className="case-info">
+        <strong>{c.name}</strong>
+        <span className="case-price">{money(casePriceDp(c))}</span>
+      </div>
+    </button>
+  )
+
   return (
     <div className="cases-page">
       <section className="cases-hero">
@@ -149,7 +179,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
       <div className="cases-header">
         <div>
           <h2>Выбери свой кейс</h2>
-          <p className="cases-subtitle">{list.length} кейсов · реальные цены Steam Market</p>
+          <p className="cases-subtitle">{CASES.length} кейсов · {CASE_CAT_ORDER.length} коллекций · реальные цены Steam Market</p>
         </div>
         <div className="cases-filters" role="tablist">
           {CATS.map((f) => (
@@ -164,37 +194,27 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
         </div>
       </div>
 
-      <div className="cases-grid">
-        {list.map((c) => (
-          <button
-            key={c.id}
-            className={`case-card rarity-${c.rarity} cat-${c.cat}`}
-            onClick={() => {
-              if (spinning) return
-              setSelected(c)
-              sound.play('select')
-            }}
-          >
-            <div
-              className="case-visual"
-              style={{
-                background: `linear-gradient(160deg, hsl(${c.hue} 45% 14%) 0%, hsl(${c.hue} 40% 9%) 55%, #0b110e 100%)`,
-              }}
-            >
-              <div className="case-box">
-                <div className="case-lid" style={{ borderColor: `hsl(${c.hue} 70% 55%)`, background: `linear-gradient(180deg, hsl(${c.hue} 60% 30%), hsl(${c.hue} 55% 18%))` }} />
-                <div className="case-body" style={{ background: `linear-gradient(180deg, hsl(${c.hue} 45% 16%), hsl(${c.hue} 40% 8%))`, borderColor: `hsl(${c.hue} 50% 30% / .6)` }} />
+      {filter === 'all' ? (
+        CASE_CAT_ORDER.map((cat) => {
+          const items = CASES.filter((c) => c.cat === cat)
+          if (!items.length) return null
+          return (
+            <section key={cat} className="case-section">
+              <div className="case-section-head">
+                <h3>{CASE_CAT_LABEL[cat]}</h3>
+                <span>{items.length}</span>
               </div>
-              {c.tag && <span className="case-tag">{c.tag}</span>}
-              <span className="case-cat">{CASE_CAT_LABEL[c.cat]}</span>
-            </div>
-            <div className="case-info">
-              <strong>{c.name}</strong>
-              <span className="case-price">{money(casePriceDp(c))}</span>
-            </div>
-          </button>
-        ))}
-      </div>
+              <div className="cases-grid">
+                {items.map(renderCard)}
+              </div>
+            </section>
+          )
+        })
+      ) : (
+        <div className="cases-grid">
+          {list.map(renderCard)}
+        </div>
+      )}
 
       {selected && (
         <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !spinning && setSelected(null)}>

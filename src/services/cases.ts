@@ -2,15 +2,21 @@ import { makeId, makeName } from './sampleCatalog'
 import { resolveSkinImage } from './skinImages'
 import type { Item, Wear } from './types'
 
-export type CaseCat = 'starter' | 'popular' | 'premium' | 'expensive' | 'exclusive'
+export type CaseCat = 'starter' | 'arsenal' | 'collections' | 'premium' | 'expensive' | 'luxe' | 'limited' | 'exclusive'
 
 export const CASE_CAT_LABEL: Record<CaseCat, string> = {
-  starter: 'Начальные',
-  popular: 'Популярные',
-  premium: 'Премиальные',
-  expensive: 'Дорогие',
-  exclusive: 'Эксклюзивные',
+  starter: 'Дешёвые',
+  arsenal: 'Арсенал',
+  collections: 'Коллекции',
+  premium: 'Популярные',
+  expensive: 'Премиум',
+  luxe: 'LUXE',
+  limited: 'Лимитированные',
+  exclusive: 'Эксклюзив',
 }
+
+/** Порядок секций на странице кейсов (как на caser.hot) */
+export const CASE_CAT_ORDER: CaseCat[] = ['starter', 'arsenal', 'collections', 'premium', 'expensive', 'luxe', 'limited', 'exclusive']
 
 export interface CaseDrop {
   itemId: string
@@ -48,7 +54,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'phoenix', name: 'Phoenix Case', price: 95, hue: 18, rarity: 'rare', cat: 'popular', tag: 'Popular', image: 'case-phoenix',
+    id: 'phoenix', name: 'Phoenix Case', price: 95, hue: 18, rarity: 'rare', cat: 'premium', tag: 'Popular', image: 'case-phoenix',
     drops: [
       d('P90', 'Asiimov', 'FT', 135, 32),
       d('Glock-18', 'Water Elemental', 'FT', 85, 24),
@@ -60,7 +66,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'asiimov', name: 'Asiimov Collection', price: 180, hue: 28, rarity: 'epic', cat: 'popular', image: 'case-asiimov',
+    id: 'asiimov', name: 'Asiimov Collection', price: 180, hue: 28, rarity: 'epic', cat: 'premium', image: 'case-asiimov',
     drops: [
       d('P90', 'Asiimov', 'FT', 135, 34),
       d('M4A4', 'Asiimov', 'FT', 1150, 26),
@@ -71,7 +77,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'hyper', name: 'Hyper Beast', price: 140, hue: 290, rarity: 'rare', cat: 'popular', image: 'case-hyper',
+    id: 'hyper', name: 'Hyper Beast', price: 140, hue: 290, rarity: 'rare', cat: 'premium', image: 'case-hyper',
     drops: [
       d('Nova', 'Hyper Beast', 'FT', 120, 34),
       d('M4A1-S', 'Hyper Beast', 'FT', 820, 28),
@@ -126,7 +132,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'redline', name: 'Redline Case', price: 110, hue: 0, rarity: 'rare', cat: 'popular', image: 'case-redline',
+    id: 'redline', name: 'Redline Case', price: 110, hue: 0, rarity: 'rare', cat: 'premium', image: 'case-redline',
     drops: [
       d('AK-47', 'Redline', 'FT', 480, 42),
       d('AK-47', 'Redline', 'MW', 820, 26),
@@ -137,7 +143,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'howl', name: 'Howl Legacy', price: 3200, hue: 8, rarity: 'mythic', cat: 'expensive', tag: 'Legendary', image: 'case-howl',
+    id: 'howl', name: 'Howl Legacy', price: 3200, hue: 8, rarity: 'mythic', cat: 'limited', tag: 'Legendary', image: 'case-howl',
     drops: [
       d('Desert Eagle', 'Blaze', 'FN', 9800, 32),
       d('AK-47', 'Fire Serpent', 'FT', 18500, 26),
@@ -191,7 +197,7 @@ export const CASES: GameCase[] = [
     ],
   },
   {
-    id: 'wildfire', name: 'Wildfire Case', price: 210, hue: 22, rarity: 'epic', cat: 'popular', image: 'case-wildfire',
+    id: 'wildfire', name: 'Wildfire Case', price: 210, hue: 22, rarity: 'epic', cat: 'premium', image: 'case-wildfire',
     drops: [
       d('AWP', 'Wildfire', 'FT', 3100, 28),
       d('AK-47', 'Asiimov', 'FT', 2100, 24),
@@ -254,6 +260,184 @@ export const CASES: GameCase[] = [
       d('P90', 'Asiimov', 'FT', 135, 12),
       d('AK-47', 'Redline', 'FT', 480, 6),
       d('AWP', 'Asiimov', 'FT', 1580, 2),
+    ],
+  },
+  // ===== Арсенал — кейсы под конкретное оружие =====
+  {
+    id: 'ak-case', name: 'AK-47 Arsenal', price: 420, hue: 8, rarity: 'epic', cat: 'arsenal', tag: 'NEW', image: 'case-ak',
+    drops: [
+      d('AK-47', 'Redline', 'FN', 35, 40),
+      d('AK-47', 'Bloodsport', 'FN', 90, 26),
+      d('AK-47', 'Asiimov', 'FN', 50, 18),
+      d('AK-47', 'Vulcan', 'FN', 55, 10),
+      d('AK-47', 'Fire Serpent', 'FN', 350, 4),
+      d('Karambit', 'Doppler', 'FN', 900, 2),
+    ],
+  },
+  {
+    id: 'awp-case', name: 'AWP Sniper', price: 380, hue: 210, rarity: 'epic', cat: 'arsenal', tag: 'NEW', image: 'case-awp',
+    drops: [
+      d('AWP', 'Neo-Noir', 'FN', 30, 34),
+      d('AWP', 'Asiimov', 'FN', 45, 26),
+      d('AWP', 'Hyper Beast', 'FN', 40, 18),
+      d('AWP', 'Containment Breach', 'FN', 65, 12),
+      d('AWP', 'Wildfire', 'FN', 110, 8),
+      d('AWP', 'Dragon Lore', 'FN', 2200, 2),
+    ],
+  },
+  {
+    id: 'm4-case', name: 'M4 Arsenal', price: 300, hue: 130, rarity: 'epic', cat: 'arsenal', tag: 'NEW', image: 'case-m4',
+    drops: [
+      d('M4A1-S', 'Player Two', 'FN', 6, 30),
+      d('M4A1-S', 'Hyper Beast', 'FN', 25, 24),
+      d('M4A4', 'Temukau', 'FN', 9, 20),
+      d('M4A1-S', 'Printstream', 'FN', 75, 14),
+      d('M4A4', 'Asiimov', 'FN', 50, 8),
+      d('M4A4', 'Howl', 'FN', 420, 4),
+    ],
+  },
+  {
+    id: 'pistol-case', name: 'Pistol Case', price: 160, hue: 45, rarity: 'rare', cat: 'arsenal', image: 'case-pistol',
+    drops: [
+      d('Glock-18', 'Water Elemental', 'FN', 1.2, 30),
+      d('USP-S', 'Kill Confirmed', 'FN', 8, 26),
+      d('CZ75-Auto', 'Victoria', 'FN', 9, 20),
+      d('Desert Eagle', 'Printstream', 'FN', 12, 16),
+      d('Desert Eagle', 'Blaze', 'FN', 180, 6),
+      d('Flip Knife', 'Doppler', 'FN', 180, 2),
+    ],
+  },
+  {
+    id: 'sniper-case', name: 'Sniper Case', price: 340, hue: 195, rarity: 'epic', cat: 'arsenal', image: 'case-sniper',
+    drops: [
+      d('SSG 08', 'Bloodshot', 'FN', 6, 30),
+      d('AWP', 'Neo-Noir', 'FN', 30, 26),
+      d('AWP', 'Asiimov', 'FN', 45, 20),
+      d('AWP', 'Hyper Beast', 'FN', 40, 14),
+      d('AWP', 'Wildfire', 'FN', 110, 8),
+      d('Karambit', 'Fade', 'FN', 1400, 2),
+    ],
+  },
+  // ===== Коллекции =====
+  {
+    id: 'phoenix-col', name: 'The Phoenix Collection', price: 260, hue: 25, rarity: 'epic', cat: 'collections', image: 'case-phoenix-col',
+    drops: [
+      d('P90', 'Asiimov', 'FN', 4, 30),
+      d('AK-47', 'Redline', 'FN', 35, 26),
+      d('AWP', 'Asiimov', 'FN', 45, 18),
+      d('AK-47', 'Vulcan', 'FN', 55, 14),
+      d('M9 Bayonet', 'Doppler', 'FN', 380, 8),
+      d('Butterfly Knife', 'Doppler', 'FN', 1200, 4),
+    ],
+  },
+  {
+    id: 'huntsman-col', name: 'The Huntsman Collection', price: 2400, hue: 330, rarity: 'legendary', cat: 'collections', tag: 'Premium', image: 'case-huntsman',
+    drops: [
+      d('M4A4', 'Howl', 'FN', 420, 30),
+      d('AWP', 'Dragon Lore', 'FN', 2200, 26),
+      d('AK-47', 'Fire Serpent', 'FN', 350, 20),
+      d('Moto Gloves', 'Spearmint', 'FN', 650, 14),
+      d('Sport Gloves', "Pandora's Box", 'FN', 700, 8),
+      d('Karambit', 'Fade', 'FN', 1400, 2),
+    ],
+  },
+  {
+    id: 'chroma-col', name: 'Chroma Collection', price: 520, hue: 280, rarity: 'legendary', cat: 'collections', image: 'case-chroma',
+    drops: [
+      d('AK-47', 'Bloodsport', 'FN', 90, 30),
+      d('M4A1-S', 'Printstream', 'FN', 75, 26),
+      d('AWP', 'Containment Breach', 'FN', 65, 20),
+      d('Specialist Gloves', 'Fade', 'FN', 500, 14),
+      d('Butterfly Knife', 'Fade', 'FN', 1500, 8),
+      d('Karambit', 'Doppler', 'FN', 900, 2),
+    ],
+  },
+  {
+    id: 'cobble-col', name: 'The Cobblestone Collection', price: 1800, hue: 35, rarity: 'legendary', cat: 'collections', image: 'case-cobble',
+    drops: [
+      d('AWP', 'Dragon Lore', 'FN', 2200, 30),
+      d('AK-47', 'Fire Serpent', 'FN', 350, 26),
+      d('M4A4', 'Howl', 'FN', 420, 20),
+      d('Driver Gloves', 'King Snake', 'FN', 200, 14),
+      d('Talon Knife', 'Doppler', 'FN', 220, 8),
+      d('Karambit', 'Fade', 'FN', 1400, 2),
+    ],
+  },
+  // ===== LUXE — топовый тир =====
+  {
+    id: 'doppler-vault', name: 'Doppler Vault', price: 14000, hue: 265, rarity: 'mythic', cat: 'luxe', tag: 'HOT', image: 'case-doppler-vault',
+    drops: [
+      d('Karambit', 'Doppler', 'FN', 900, 30),
+      d('Butterfly Knife', 'Doppler', 'FN', 1200, 24),
+      d('M9 Bayonet', 'Doppler', 'FN', 380, 18),
+      d('Talon Knife', 'Doppler', 'FN', 220, 14),
+      d('Bayonet', 'Doppler', 'FN', 300, 10),
+      d('Nomad Knife', 'Doppler', 'FN', 260, 4),
+    ],
+  },
+  {
+    id: 'fade-vault', name: 'Fade Vault', price: 22000, hue: 320, rarity: 'mythic', cat: 'luxe', tag: 'HOT', image: 'case-fade-vault',
+    drops: [
+      d('Karambit', 'Fade', 'FN', 1400, 30),
+      d('Butterfly Knife', 'Fade', 'FN', 1500, 24),
+      d('Classic Knife', 'Fade', 'FN', 420, 18),
+      d('Skeleton Knife', 'Fade', 'FN', 800, 14),
+      d('Specialist Gloves', 'Fade', 'FN', 500, 10),
+      d('Moto Gloves', 'Spearmint', 'FN', 650, 4),
+    ],
+  },
+  {
+    id: 'karambit-case', name: 'Karambit Case', price: 9500, hue: 350, rarity: 'mythic', cat: 'luxe', image: 'case-karambit',
+    drops: [
+      d('Karambit', 'Doppler', 'FN', 900, 40),
+      d('Karambit', 'Fade', 'FN', 1400, 30),
+      d('Butterfly Knife', 'Doppler', 'FN', 1200, 20),
+      d('Butterfly Knife', 'Fade', 'FN', 1500, 8),
+      d('M9 Bayonet', 'Doppler', 'FN', 380, 2),
+    ],
+  },
+  {
+    id: 'luxury-gloves', name: 'Luxury Gloves', price: 18000, hue: 45, rarity: 'mythic', cat: 'luxe', image: 'case-luxgloves',
+    drops: [
+      d('Sport Gloves', "Pandora's Box", 'FN', 700, 34),
+      d('Moto Gloves', 'Spearmint', 'FN', 650, 28),
+      d('Specialist Gloves', 'Fade', 'FN', 500, 20),
+      d('Driver Gloves', 'King Snake', 'FN', 200, 12),
+      d('Bloodhound Gloves', 'Charred', 'FN', 120, 4),
+      d('Hand Wraps', 'Cobalt Skulls', 'FN', 90, 2),
+    ],
+  },
+  // ===== Лимитированные =====
+  {
+    id: 'stattrak-case', name: 'StatTrak Case', price: 380, hue: 200, rarity: 'epic', cat: 'limited', tag: 'NEW', image: 'case-stattrak',
+    drops: [
+      d('AK-47', 'Redline', 'FN', 90, 40, true),
+      d('AWP', 'Asiimov', 'FN', 45, 26, true),
+      d('M4A1-S', 'Hyper Beast', 'FN', 25, 20, true),
+      d('AK-47', 'Vulcan', 'FN', 55, 10, true),
+      d('M9 Bayonet', 'Doppler', 'FN', 380, 4),
+    ],
+  },
+  {
+    id: 'dragon-vault', name: 'Dragon Vault', price: 4800, hue: 10, rarity: 'mythic', cat: 'limited', tag: 'LIMITED', image: 'case-dragon',
+    drops: [
+      d('AWP', 'Dragon Lore', 'FN', 2200, 40),
+      d('M4A4', 'Howl', 'FN', 420, 30),
+      d('AK-47', 'Fire Serpent', 'FN', 350, 18),
+      d('Sport Gloves', "Pandora's Box", 'FN', 700, 8),
+      d('Karambit', 'Fade', 'FN', 1400, 4),
+    ],
+  },
+  // ===== Эксклюзив =====
+  {
+    id: 'mythic-vault', name: 'Mythic Vault', price: 36000, hue: 300, rarity: 'mythic', cat: 'exclusive', tag: 'LIMITED', image: 'case-mythic',
+    drops: [
+      d('Butterfly Knife', 'Fade', 'FN', 1500, 34),
+      d('Karambit', 'Fade', 'FN', 1400, 28),
+      d('AWP', 'Dragon Lore', 'FN', 2200, 20),
+      d('M4A4', 'Howl', 'FN', 420, 12),
+      d('Moto Gloves', 'Spearmint', 'FN', 650, 4),
+      d('Sport Gloves', "Pandora's Box", 'FN', 700, 2),
     ],
   },
 ]

@@ -236,6 +236,14 @@ main{max-width:1240px;margin:0 auto;padding:30px 22px 70px}
 .rarity-epic .case-visual{box-shadow:inset 0 -3px 0 #a855f7}
 .rarity-legendary .case-visual{box-shadow:inset 0 -3px 0 var(--gold)}
 .rarity-mythic .case-visual{box-shadow:inset 0 -3px 0 var(--red)}
+.case-section{margin-bottom:26px}
+.case-section-head{display:flex;align-items:baseline;gap:10px;margin:0 2px 14px}
+.case-section-head h3{font-size:17px;letter-spacing:-.01em}
+.case-section-head span{font-size:12px;color:var(--m);font-variant-numeric:tabular-nums}
+.case-section-head:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.case-tag.tag-new{background:linear-gradient(180deg,#5cc8ff,#2b7fd4);color:#04121f;box-shadow:0 3px 12px rgba(80,170,255,.4)}
+.case-tag.tag-limited,.case-tag.tag-legendary,.case-tag.tag-premium{background:linear-gradient(180deg,var(--gold),#b8860b);color:#1a1204;box-shadow:0 3px 12px rgba(232,184,75,.35)}
+.case-tag.tag-hot{background:linear-gradient(180deg,var(--red),#c22);color:#1a0404;box-shadow:0 3px 12px rgba(255,90,90,.4)}
 @keyframes caseFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1.5deg)}}
 
 /* case modal */
