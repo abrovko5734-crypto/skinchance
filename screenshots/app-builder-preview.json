@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "SkinChance",
+      "hasCanvas": false,
+      "bodyTextLen": 857,
+      "bodyTextHash": "d99cb8c1a7b9cbf92ac348500fc2aa45fa28be1c02b421481c957653a562895b",
+      "bodyTextPrefix": "Кейсы Апгрейд Контракты Инвентарь Профиль 0,00 0,00 грн И Кейсы ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "SkinChance",
+      "hasCanvas": false,
+      "bodyTextLen": 848,
+      "bodyTextHash": "e3e3a34533dfcb46cf705a51bccd9ce4cbf6b10e8335e034f6d99838f98d8da0",
+      "bodyTextPrefix": "Кейсы Апгрейд Контракты Инвентарь Профиль 0,00 И Кейсы Шанс кажд",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
