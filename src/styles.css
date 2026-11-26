@@ -637,3 +637,8 @@ main{max-width:1240px;margin:0 auto;padding:30px 22px 70px}
 @keyframes wheelSpin{to{transform:rotate(360deg)}}
 .wheel.caser-style.landed-win .wheel-ring circle{stroke:rgba(228,174,57,.7)}
 .wheel.caser-style.landed-clover .wheel-ring circle{stroke:rgba(57,255,128,.8)}
+
+/* ============ DROP PRICES ============ */
+.drop-usd{display:block;font-size:10.5px;color:var(--m);font-weight:500;margin-top:2px}
+.drops-loading{color:var(--m);font-weight:500;font-size:11px}
+.drop-loading{opacity:.6}

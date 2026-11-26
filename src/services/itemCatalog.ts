@@ -97,10 +97,12 @@ class ItemCatalog {
         }
       }
       this.byIdMap = new Map(items.map((i) => [i.id, i]))
-      // также индекс по упрощённому id
+      // также индекс по упрощённому id и по паре weapon|skin (без износа)
       for (const i of items) {
         const simple = `${i.stattrak ? 'st-' : ''}${i.weapon}|${i.skin}|${(i.wear ?? '').split(' ').map(w => w[0]).join('')}`.toLowerCase()
         if (!this.byIdMap.has(simple)) this.byIdMap.set(simple, i)
+        const noWear = `${i.stattrak ? 'st-' : ''}${i.weapon}|${i.skin}`.toLowerCase()
+        if (!this.byIdMap.has(noWear)) this.byIdMap.set(noWear, i)
       }
       return items
     })().catch((e) => {
@@ -129,11 +131,25 @@ class ItemCatalog {
 
   async byId(id: string): Promise<Item | null> {
     await this.all()
-    if (this.byIdMap?.has(id)) return this.byIdMap.get(id)!
-    // fuzzy: sample ids like ak-47|redline|ft
+    const map = this.byIdMap
+    if (map?.has(id)) return map.get(id)!
     const lower = id.toLowerCase()
-    for (const [k, v] of this.byIdMap ?? []) {
+    // progressively strip trailing segments: 'ak-47|redline|ft' → 'ak-47|redline'
+    const parts = lower.split('|')
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const k = parts.slice(0, i).join('|')
+      if (map?.has(k)) return map.get(k)!
+    }
+    for (const [k, v] of map ?? []) {
       if (k.toLowerCase() === lower || v.name.toLowerCase().includes(lower.replace(/\|/g, ' '))) return v
+    }
+    // prefix match on weapon|skin (e.g. 'karambit|doppler')
+    if (parts.length >= 2) {
+      const needle = parts.slice(0, 2).join('|')
+      for (const [k, v] of map ?? []) {
+        const kk = k.toLowerCase()
+        if (kk === needle || kk.startsWith(needle + '|')) return v
+      }
     }
     return null
   }

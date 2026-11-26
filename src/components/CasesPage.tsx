@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
-import {
-  CASES, CASE_CAT_LABEL, rollCase, dropToItem,
-  type GameCase, type CaseCat,
-} from '../services/cases'
-import { money } from '../lib/storage'
+import { CASES, CASE_CAT_LABEL, dropToItem, type GameCase, type CaseCat } from '../services/cases'
+import { resolveCase, pickWeighted, type WeightedItem } from '../services/caseResolver'
+import { money, moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
-import { catalog } from '../services/itemCatalog'
 import { rarityColor, type Item } from '../services/types'
 import { CaseRoulette } from './CaseRoulette'
 import { Icon } from './ui'
@@ -34,8 +31,9 @@ const CATS: (CaseCat | 'all')[] = ['all', 'starter', 'popular', 'premium', 'expe
 
 export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast, openCaseId, onOpenCaseHandled }: Props) {
   const [selected, setSelected] = useState<GameCase | null>(null)
+  const [resolved, setResolved] = useState<WeightedItem[] | null>(null)
   const [spinning, setSpinning] = useState(false)
-  const [roulette, setRoulette] = useState<{ c: GameCase; drop: ReturnType<typeof rollCase> } | null>(null)
+  const [roulette, setRoulette] = useState<{ c: GameCase; drops: WeightedItem[]; winner: Item; jackpot: boolean } | null>(null)
   const [filter, setFilter] = useState<CaseCat | 'all'>('all')
 
   // Глубокая ссылка с главной страницы — открыть конкретный кейс
@@ -49,12 +47,46 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
     onOpenCaseHandled?.()
   }, [openCaseId]) // eslint-disable-line
 
-  const list = filter === 'all' ? CASES : CASES.filter((c) => c.cat === filter)
+  // Резолвим дропы выбранного кейса: настоящие предметы + реальные цены Steam
+  useEffect(() => {
+    if (!selected) { setResolved(null); return }
+    let live = true
+    setResolved(null)
+    resolveCase(selected)
+      .then((r) => live && setResolved(r))
+      .catch(() => {
+        if (!live) return
+        // Деградация: предметы без рыночных цен, открытие доступно
+        setResolved(selected.drops.map((d) => {
+          const it = dropToItem(d)
+          it.price = null
+          it.priceSource = null
+          return { item: it, chance: d.chance }
+        }))
+      })
+    return () => { live = false }
+  }, [selected])
+
+  const ensureResolved = async (c: GameCase): Promise<WeightedItem[] | null> => {
+    if (resolved && selected?.id === c.id) return resolved
+    try {
+      const r = await resolveCase(c)
+      if (selected?.id === c.id) setResolved(r)
+      return r
+    } catch {
+      return null
+    }
+  }
 
   const doOpen = async (c: GameCase) => {
     if (spinning || roulette) return
     if (c.price > balance) {
       onToast('Недостаточно DP. Пополните баланс')
+      return
+    }
+    const drops = await ensureResolved(c)
+    if (!drops || drops.length === 0) {
+      onToast('Не удалось загрузить содержимое кейса')
       return
     }
     setSpinning(true)
@@ -64,11 +96,12 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
       setSpinning(false)
       return
     }
-    // Результат определён серверной крипто-логикой ДО запуска анимации
-    const drop = rollCase(c)
-    const item = dropToItem(drop)
-    catalog.refreshPrices([item]).catch(() => {})
-    setRoulette({ c, drop })
+    // Результат определён крипто-роллом ДО запуска анимации
+    const winner = pickWeighted(drops).item
+    const prices = drops.map((d) => d.item.price).filter((p): p is number => p != null)
+    const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0
+    const jackpot = winner.price != null && avg > 0 && winner.price > avg * 2.5
+    setRoulette({ c, drops, winner, jackpot })
     setSpinning(false)
     setSelected(null)
   }
@@ -83,10 +116,12 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
       price: item.price,
       at: Date.now(),
     })
-    sound.play((item.price ?? 0) > (roulette?.c.price ?? 0) * 2 ? 'win' : 'select')
+    sound.play(roulette?.jackpot ? 'win' : 'select')
     setRoulette(null)
-    if (sell && uid) onSell(uid, item.price ?? 0)
+    if (sell && uid && item.price != null) onSell(uid, item.price)
   }
+
+  const list = filter === 'all' ? CASES : CASES.filter((c) => c.cat === filter)
 
   return (
     <div className="cases-page">
@@ -98,7 +133,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
           <div className="hero-pills">
             <span>✦ {CASES.length} кейсов</span>
             <span>◈ 5 категорий</span>
-            <span>↗ Цены рынка Steam</span>
+            <span>↗ Цены Steam Market</span>
           </div>
         </div>
         <div className="cases-hero-art" aria-hidden="true">
@@ -113,7 +148,7 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
       <div className="cases-header">
         <div>
           <h2>Выбери свой кейс</h2>
-          <p className="cases-subtitle">{list.length} кейсов · цены в DP</p>
+          <p className="cases-subtitle">{list.length} кейсов · реальные цены Steam Market</p>
         </div>
         <div className="cases-filters" role="tablist">
           {CATS.map((f) => (
@@ -184,30 +219,44 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
                 <div className="case-price-big">{money(selected.price)}</div>
               </div>
               <div className="case-drops">
-                <h4>Возможные дропы · {selected.drops.length} предметов</h4>
+                <h4>
+                  Возможные дропы · {selected.drops.length} предметов
+                  {resolved == null && <span className="drops-loading"> · загрузка цен…</span>}
+                </h4>
                 <div className="drops-list">
-                  {selected.drops
-                    .slice()
-                    .sort((a, b) => b.price - a.price)
-                    .map((d) => {
-                      const it = dropToItem(d)
+                  {(resolved ?? selected.drops.map((d) => ({ item: null, chance: d.chance, raw: d }))).map((w, i) => {
+                    const it = (w as any).item as Item | null
+                    const chance = w.chance
+                    if (!it) {
+                      const d = (w as any).raw
                       return (
-                        <div key={d.itemId} className="drop-row" style={{ ['--rc' as string]: rarityColor(it.rarity) }}>
-                          <span className="drop-thumb"><ItemThumb item={it} /></span>
-                          <span className="drop-id" title={it.name}>{it.name}</span>
-                          <span className="drop-chance">{d.chance}%</span>
+                        <div key={i} className="drop-row drop-loading">
+                          <span className="drop-thumb"><span className="drop-ph">···</span></span>
+                          <span className="drop-id">Загрузка…</span>
+                          <span className="drop-chance">{chance}%</span>
                         </div>
                       )
-                    })}
+                    }
+                    return (
+                      <div key={it.id + i} className="drop-row" style={{ ['--rc' as string]: rarityColor(it.rarity) }}>
+                        <span className="drop-thumb"><ItemThumb item={it} /></span>
+                        <span className="drop-id" title={it.name}>
+                          {it.name}
+                          <small className="drop-usd">{moneyUsd(it.price)}</small>
+                        </span>
+                        <span className="drop-chance">{chance}%</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
               <div className="case-actions">
                 <button
                   className="btn go"
-                  disabled={spinning || selected.price > balance}
+                  disabled={spinning || resolved == null || selected.price > balance}
                   onClick={() => doOpen(selected)}
                 >
-                  {spinning ? 'Списание DP…' : `Открыть за ${money(selected.price)}`}
+                  {spinning ? 'Списание DP…' : resolved == null ? 'Загрузка цен…' : `Открыть за ${money(selected.price)}`}
                 </button>
                 {selected.price > balance && <p className="hint">Недостаточно DP — пополните баланс</p>}
               </div>
@@ -218,9 +267,12 @@ export function CasesPage({ balance, onSpend, onAddItem, onSell, onWin, onToast,
 
       {roulette && (
         <CaseRoulette
-          gameCase={roulette.c}
-          winner={roulette.drop}
-          onClaim={() => finishOpen(dropToItem(roulette.drop), false)}
+          caseName={roulette.c.name}
+          casePrice={roulette.c.price}
+          drops={roulette.drops}
+          winner={roulette.winner}
+          jackpot={roulette.jackpot}
+          onClaim={() => finishOpen(roulette.winner, false)}
           onSell={(item) => finishOpen(item, true)}
         />
       )}

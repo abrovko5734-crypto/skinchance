@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { dropToItem, type GameCase, type CaseDrop } from '../services/cases'
 import { money, moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { rarityColor, rarityRu, type Item } from '../services/types'
+import type { WeightedItem } from '../services/caseResolver'
 import { ItemImage, Icon } from './ui'
 import { Confetti } from './Confetti'
 
 /**
  * Горизонтальная рулетка открытия кейса.
- * Движение СПРАВА НАЛЕВО, центральный указатель, плавное замедление ~7с.
+ * Движение СПРАВА НАЛЕВО, центральный указатель, плавное замедление ~7–8с.
  * Выигрыш (winner) определён ДО старта анимации — рулетка лишь показывает его.
  */
 
@@ -19,28 +19,31 @@ const GAP = 10
 const STEP = CARD_W + GAP
 const PAD = 14
 
-const weightedPick = (drops: CaseDrop[]): CaseDrop => {
+const weightedPick = (drops: WeightedItem[]): Item => {
   const a = new Uint32Array(1)
   crypto.getRandomValues(a)
   const roll = (a[0] / 2 ** 32) * 100
   let acc = 0
   for (const d of drops) {
     acc += d.chance
-    if (roll < acc) return d
+    if (roll < acc) return d.item
   }
-  return drops[drops.length - 1]
+  return drops[drops.length - 1].item
 }
 
 interface Props {
-  gameCase: GameCase
-  winner: CaseDrop
+  caseName: string
+  casePrice: number // DP
+  drops: WeightedItem[]
+  winner: Item
+  jackpot: boolean
   onClaim: () => void
   onSell: (item: Item) => void
 }
 
 type Phase = 'spin' | 'done'
 
-export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
+export function CaseRoulette({ caseName, casePrice, drops, winner, jackpot, onClaim, onSell }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const [phase, setPhase] = useState<Phase>('spin')
@@ -50,13 +53,12 @@ export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
   // Лента предметов: случайные дропы + гарантированный выигрыш на WIN_INDEX.
   const items = useMemo<Item[]>(() => {
     const arr: Item[] = []
-    const winItem = dropToItem(winner)
     for (let i = 0; i < STRIP_LEN; i++) {
-      if (i === WIN_INDEX) arr.push(winItem)
-      else arr.push(dropToItem(weightedPick(gameCase.drops)))
+      arr.push(i === WIN_INDEX ? winner : weightedPick(drops))
     }
     return arr
-  }, [gameCase, winner])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const vp = viewportRef.current
@@ -78,13 +80,13 @@ export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
 
     // Тиканье с замедлением
     let tickTimer = 0
+    const t0 = performance.now()
     const tick = () => {
       sound.play('tick')
       const elapsed = performance.now() - t0
       const wait = elapsed < dur * 0.7 ? 90 : elapsed < dur * 0.9 ? 160 : 320
       tickTimer = window.setTimeout(tick, wait)
     }
-    const t0 = performance.now()
     sound.play('start')
     tickTimer = window.setTimeout(tick, 120)
 
@@ -96,10 +98,10 @@ export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
     anim.onfinish = () => {
       window.clearTimeout(tickTimer)
       sound.play('stop')
-      setWon(items[WIN_INDEX])
+      setWon(winner)
       timers.current.push(window.setTimeout(() => {
         setPhase('done')
-        sound.play((items[WIN_INDEX].price ?? 0) > gameCase.price * 2 ? 'win' : 'select')
+        sound.play(jackpot ? 'win' : 'select')
       }, 650))
     }
     return () => {
@@ -111,14 +113,14 @@ export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
   }, [])
 
   return (
-    <div className="overlay roulette-overlay" role="dialog" aria-modal aria-label={`Открытие кейса ${gameCase.name}`}>
+    <div className="overlay roulette-overlay" role="dialog" aria-modal aria-label={`Открытие кейса ${caseName}`}>
       <div className="roulette">
         <header className="roulette-head">
           <div>
             <span className="eyebrow">Кейс</span>
-            <h3>{gameCase.name}</h3>
+            <h3>{caseName}</h3>
           </div>
-          <div className="roulette-price">{money(gameCase.price)}</div>
+          <div className="roulette-price">{money(casePrice)}</div>
         </header>
 
         <div className="roulette-viewport" ref={viewportRef}>
@@ -152,7 +154,7 @@ export function CaseRoulette({ gameCase, winner, onClaim, onSell }: Props) {
 
         {phase === 'done' && won && (
           <div className="roulette-result">
-            {(won.price ?? 0) > gameCase.price * 2 && <Confetti count={36} />}
+            {jackpot && <Confetti count={36} />}
             <div className="rr-item">
               <div className="rr-img">
                 <ItemImage item={won} size="lg" />
