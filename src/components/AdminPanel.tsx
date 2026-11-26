@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { moneyUsd } from '../lib/storage'
+import { money, moneyUsd } from '../lib/storage'
 import { sound } from '../lib/sound'
 import { catalog } from '../services/itemCatalog'
 import type { Item } from '../services/types'

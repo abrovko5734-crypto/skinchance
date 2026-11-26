@@ -1,4 +1,4 @@
-import { moneyUsd } from '../lib/storage'
+import { money, moneyUsd } from '../lib/storage'
 import type { Odds } from '../lib/odds'
 import { RARITY_COLOR, type Item } from '../services/types'
 import { Icon, ItemImage, Tag } from './ui'
